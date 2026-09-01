@@ -142,6 +142,7 @@ python <skill目录>/scripts/extract.py <资料目录>
 3. **题型配比**：客观题为主（choice/multi/tf/fill ≈ 70-80%），大题按学科判断——文科出 short/essay，理工科出 calc，概念混合课可少量 short。
 4. choice 正确答案 A/B/C/D **均匀分布**（各字母次数差 ≤1），干扰项对应真实误解。
 5. 每题带 `explanation`（解析）和 `pitfall`（易错提醒）。
+6. 每题标 `difficulty`（易/中/难）：`easy`=直接记忆/概念题，`medium`=需理解辨析，`hard`=综合/易错。难度要拉开，别全 easy。
 
 ```json
 {
@@ -155,7 +156,7 @@ python <skill目录>/scripts/extract.py <资料目录>
           "source": "original | generated",
           "source_ref": "原题出处或空",
           "kc_id": "ch1.kc1",
-          "difficulty": "basic | medium | hard",
+          "difficulty": "easy | medium | hard",
           "points": 2,
           "question": "题干",
           "options": ["A", "B", "C", "D"],
@@ -191,7 +192,7 @@ python <skill目录>/scripts/render_graph.py <资料目录>
 | 脚本 | 产物 | 内容 |
 |---|---|---|
 | render_outline.py | `<课程名>-复习提纲.html` | 顶部课程名 + 目录；每章 H2，知识点 H3 带四色标签（红必考/橙重点/蓝高频/灰了解），正文即 `content`；章末折叠自测（selftests） |
-| render_quiz.py | `<课程名>-复习题.html` | 顶部课程名 + 章节切换；客观题点选→提交→自动批改+逐题解析；主观题显示折叠参考答案；底部「查看掌握度报告」按 kc_id 聚合得分率，标出薄弱知识点 |
+| render_quiz.py | `<课程名>-复习题.html` | 刷题 App 风：深色 header + 统计条/进度条 + 题型/章节 tab + 顺序/随机模式；单题视图逐题「提交」判对错、高亮答案、显示解析与易错点；做错的题自动进「错题集」可重刷；主观题一键看参考答案；「掌握度报告」按知识点聚合得分率标薄弱；Ctrl+P 打印时全部题目+答案+解析展开 |
 | render_graph.py | `<课程名>-知识图谱.html` | 左章右知识点布局，`deps` 画依赖虚线，`is_hub` 加星标，可拖拽/缩放/悬停 tooltip |
 
 三份 HTML 均单文件、无外部 CDN 依赖（离线可开），可 Ctrl+P 打印为 PDF。
