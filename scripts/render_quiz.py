@@ -174,8 +174,17 @@ body {
 .fill-input.correct { border-color: var(--correct); background: #f6ffed; }
 .fill-input.wrong { border-color: var(--wrong); background: #fff1f0; }
 
+/* 主观题作答区 */
+.subj-input {
+  width: 100%; min-height: 120px; padding: 12px 14px; border: 2px solid var(--line);
+  border-radius: 8px; font-size: 15px; line-height: 1.7; outline: none; resize: vertical;
+  font-family: inherit; transition: border-color .15s; background: #fff;
+}
+.subj-input:focus { border-color: var(--accent); }
+
 /* 操作区 */
-.q-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.q-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+.auto-hint { font-size: 12px; color: #999; }
 .btn { padding: 9px 22px; border-radius: 8px; font-size: 14px; cursor: pointer; border: none; font-weight: 600; transition: all .15s; }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover { background: #2d2d4e; }
@@ -328,10 +337,15 @@ def _render_question(q, gid):
         qtext = re.sub(r"_{3,}", repl, qtext)
         lines.append(f'<div class="fill-wrap"><div class="q-stem">{qtext}</div></div>')
 
-    # 操作按钮
+    # 操作按钮（单选/判断：点击选项自动判分；多选/填空/主观题：手动提交）
     if t in SUBJECTIVE:
+        lines.append('<textarea class="subj-input" placeholder="在此输入你的答案……"></textarea>')
         lines.append('<div class="q-actions">'
-                     f'<button class="btn btn-outline" onclick="toggleAnswer(this)">查看参考答案</button>'
+                     f'<button class="btn btn-primary" onclick="submitCurrent()">提交答案</button>'
+                     '</div>')
+    elif t in ("choice", "tf"):
+        lines.append('<div class="q-actions">'
+                     '<span class="auto-hint">点击选项即可自动判分</span>'
                      '</div>')
     else:
         lines.append('<div class="q-actions">'
@@ -420,7 +434,7 @@ def render(quiz: dict) -> str:
     parts.append('<div class="nav-fixed"><div class="nav-inner">'
                  '<button class="btn btn-outline" onclick="move(-1)">上一题</button>'
                  '<span class="nav-info" id="navInfo">0 / 0</span>'
-                 '<button class="btn btn-primary" onclick="submitCurrent()">提交答案</button>'
+                 '<button class="btn btn-primary" id="submitBtn" onclick="submitCurrent()">提交答案</button>'
                  '<button class="btn btn-outline" onclick="move(1)">下一题</button>'
                  '</div></div>')
 
@@ -513,6 +527,15 @@ function renderCurrent(){
   var card = qCard(q);
   if(card) card.classList.add('active');
   if(info) info.textContent = (state.idx+1) + ' / ' + curList.length;
+  // 底部提交按钮：单选/判断自动判分无需提交；已提交的题也隐藏
+  var sb = document.getElementById('submitBtn');
+  if(sb){
+    var needSubmit = false;
+    if(q && (q.type==='multi' || q.type==='fill' || SUBJ[q.type])){
+      needSubmit = !submitted[q.id];
+    }
+    sb.style.display = needSubmit ? '' : 'none';
+  }
 }
 function move(d){
   if(curList.length===0) return;
@@ -573,8 +596,15 @@ function highlight(card, q){
 function submitCurrent(){
   var q = curQ();
   if(!q) return;
-  if(SUBJ[q.type]) return;
   var card = qCard(q);
+  // 主观题：标记已作答并展示参考答案，自行对照（不自动判分）
+  if(SUBJ[q.type]){
+    submitted[q.id] = true;
+    card.classList.add('answered');
+    card.querySelector('.answer-static').classList.add('show');
+    updateStats();
+    return;
+  }
   var correct = grade(q, card);
   if(correct===null){ alert('请先作答'); return; }
   submitted[q.id] = true;
@@ -598,20 +628,14 @@ function submitCurrent(){
   if(state.type==='wrong' && correct && wasWrong){ rebuildList(); renderCurrent(); }
 }
 
-function toggleAnswer(btn){
-  var card = btn.closest('.q-card');
-  var as = card.querySelector('.answer-static');
-  var shown = as.classList.toggle('show');
-  btn.textContent = shown ? '收起参考答案' : '查看参考答案';
-}
-
 function updateStats(){
   var done=0, right=0, wrong=0, objTotal=0;
   ALL.forEach(function(q){ if(!SUBJ[q.type]) objTotal++; });
-  for(var id in submitted){
-    if(!submitted[id]) continue;
-    done++; if(results[id]) right++; else wrong++;
-  }
+  ALL.forEach(function(q){
+    if(SUBJ[q.type]) return;   // 主观题不计入客观题统计
+    if(!submitted[q.id]) return;
+    done++; if(results[q.id]) right++; else wrong++;
+  });
   document.getElementById('statDone').textContent = done;
   document.getElementById('statRight').textContent = right;
   document.getElementById('statWrong').textContent = wrong;
@@ -674,6 +698,10 @@ document.addEventListener('click', function(e){
   } else {
     card.querySelectorAll('.option').forEach(function(o){ o.classList.remove('selected'); });
     opt.classList.add('selected');
+  }
+  // 单选/判断：选中即自动判分（无需点提交）
+  if(type === 'choice' || type === 'tf'){
+    submitCurrent();
   }
 });
 
