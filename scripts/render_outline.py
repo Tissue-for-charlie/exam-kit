@@ -176,11 +176,11 @@ aside.sidebar::-webkit-scrollbar-thumb { background: var(--line-strong); border-
 /* 折叠切换按钮（脱离 sidebar overflow，固定定位） */
 button.sb-toggle {
   position: fixed;
-  top: 30px;
+  top: 24px;
   left: calc(var(--sbw) - 14px);
-  width: 28px; height: 28px;
+  width: 26px; height: 26px;
   border-radius: 50%;
-  background: var(--bg-elevated);
+  background: var(--bg);
   border: 1px solid var(--line-strong);
   color: var(--ink-2);
   font-size: 13px;
@@ -190,7 +190,7 @@ button.sb-toggle {
   display: flex; align-items: center; justify-content: center;
   padding: 0;
   line-height: 1;
-  box-shadow: 0 2px 8px rgba(31,30,29,.06);
+  box-shadow: 0 1px 2px rgba(31,30,29,.04);
 }
 button.sb-toggle:hover {
   color: var(--accent);
@@ -201,9 +201,80 @@ body.sb-collapsed { padding-left: 60px; }
 body.sb-collapsed aside.sidebar { width: 60px; }
 body.sb-collapsed aside.sidebar .sb-top,
 body.sb-collapsed aside.sidebar .sb-toc,
-body.sb-collapsed aside.sidebar .sb-bottom { opacity: 0; pointer-events: none; }
+body.sb-collapsed aside.sidebar .sb-bottom { display: none; }
 body.sb-collapsed aside.sidebar .sb-resize { display: none; }
 body.sb-collapsed button.sb-toggle { left: 46px; }
+
+/* ── 折叠态章节进度条（60px 细条中央纵向色点） ── */
+.sb-rail {
+  display: none;            /* 默认隐藏，展开态不占空间 */
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;  /* 章节数少时也能均匀铺开，避免挤在顶部 */
+  padding: 76px 0 30px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.sb-rail::-webkit-scrollbar { display: none; }
+/* 色点背后一条细轨线，给纵向布局一个视觉锚点（few-chapter 时尤为重要） */
+.sb-rail::before {
+  content: "";
+  position: absolute;
+  top: 88px; bottom: 56px;
+  left: 50%; transform: translateX(-50%);
+  width: 1px;
+  background: linear-gradient(to bottom, transparent 0%, var(--line-strong) 8%, var(--line-strong) 92%, transparent 100%);
+  pointer-events: none;
+}
+body.sb-collapsed .sb-rail { display: flex; }
+.sb-dot {
+  position: relative;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1.5px solid var(--ink-3);
+  transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  cursor: pointer;
+  display: block;
+  text-decoration: none;
+  flex: none;
+}
+.sb-dot:hover { border-color: var(--accent); transform: scale(1.2); }
+.sb-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.4);
+  box-shadow: 0 0 0 5px rgba(217,119,87,.16);
+}
+.sb-dot.has-must { border-color: var(--accent); }
+.sb-dot.has-must.active { box-shadow: 0 0 0 6px rgba(217,119,87,.20); }
+body.sb-collapsed .sb-dot { animation: dotFadeIn .34s ease both; }
+body.sb-collapsed .sb-dot:nth-child(1) { animation-delay: .04s; }
+body.sb-collapsed .sb-dot:nth-child(2) { animation-delay: .10s; }
+body.sb-collapsed .sb-dot:nth-child(3) { animation-delay: .16s; }
+body.sb-collapsed .sb-dot:nth-child(4) { animation-delay: .22s; }
+body.sb-collapsed .sb-dot:nth-child(5) { animation-delay: .28s; }
+body.sb-collapsed .sb-dot:nth-child(n+6) { animation-delay: .34s; }
+@keyframes dotFadeIn {
+  from { opacity: 0; transform: translateY(-6px) scale(.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+body.sb-collapsed .sb-dot.active { animation: none; }
+/* 折叠态底部进度文字 */
+.sb-rail-foot {
+  display: none;
+  position: relative;
+  padding-top: 14px;
+  font-family: var(--serif);
+  text-align: center;
+  flex: none;
+}
+body.sb-collapsed .sb-rail-foot { display: block; }
+.sb-rail-foot b { color: var(--accent); font-weight: 600; font-size: 16px; line-height: 1; }
+.sb-rail-foot .rail-foot-sep { display: block; width: 18px; height: 1px; background: var(--line-strong); margin: 9px auto; }
+.sb-rail-foot [data-rail-tot] { color: var(--ink-3); font-size: 11px; }
 
 /* 移动端抽屉遮罩（桌面端隐藏，移动端媒体查询里启用） */
 .sb-overlay { display: none; }
@@ -396,6 +467,9 @@ details.selftest[open] summary { color: var(--ink); }
   body.sb-collapsed button.sb-toggle { left: 14px; }
   /* resize 把手移动端禁用 */
   .sb-resize { display: none; }
+  /* 移动端始终用抽屉，不显示折叠态色点 */
+  body.sb-collapsed .sb-rail { display: none; }
+  body .sb-rail-foot { display: none; }
   /* 遮罩启用 */
   .sb-overlay {
     display: block; position: fixed; inset: 0; z-index: 45;
@@ -451,7 +525,7 @@ OUTLINE_JS = """
     body.classList.remove('sb-open'); setToggleIcon();
   });
   // 移动端点目录链接后自动收起抽屉
-  document.querySelectorAll('aside.sidebar .sb-toc a').forEach(function(a){
+  document.querySelectorAll('aside.sidebar .sb-toc a, aside.sidebar .sb-dot').forEach(function(a){
     a.addEventListener('click', function(){
       if (isMobile()){ body.classList.remove('sb-open'); setToggleIcon(); }
     });
@@ -514,6 +588,15 @@ OUTLINE_JS = """
     var href = a.getAttribute('href') || '';
     if (href.charAt(0) === '#') linkMap.set(href.slice(1), a);
   });
+  // 折叠态章节色点（一个 chapter 一个 dot）
+  var dotMap = new Map(); // chapterId -> <a.sb-dot>
+  document.querySelectorAll('aside.sidebar .sb-dot').forEach(function(d){
+    var href = d.getAttribute('href') || '';
+    if (href.charAt(0) === '#') dotMap.set(href.slice(1), d);
+  });
+  // 章节顺序（按 DOM 出现顺序）
+  var chapterOrder = Array.from(document.querySelectorAll('section.chapter[id]')).map(function(s){ return s.id; });
+  var railCur = document.querySelector('[data-rail-cur]');
   function updateActive(){
     if (!kcList.length) return;
     var vh = window.innerHeight;
@@ -538,6 +621,17 @@ OUTLINE_JS = """
         a.classList.toggle('active', isActive);
       }
     });
+    // 同步色点高亮 + 底部当前章节序号
+    if (activeChId) {
+      dotMap.forEach(function(d, id){
+        var on = (id === activeChId);
+        if (d.classList.contains('active') !== on) d.classList.toggle('active', on);
+      });
+      if (railCur) {
+        var idx = chapterOrder.indexOf(activeChId);
+        if (idx >= 0) railCur.textContent = String(idx + 1);
+      }
+    }
   }
   var rafScheduled = false;
   function scheduleUpdate(){
@@ -665,6 +759,25 @@ def render_sidebar(skeleton: dict) -> str:
                 f'</a></li>'
             )
     parts.append("</ul></nav>")
+    # ── 折叠态章节色点导航（与目录共用锚点） ──
+    rail_dots = []
+    for idx, ch in enumerate(chapters):
+        n_m = sum(1 for kc in ch.get("kcs", []) if kc.get("importance") == "must")
+        has_must_cls = " has-must" if n_m else ""
+        rail_dots.append(
+            f'<a class="sb-dot{has_must_cls}" data-ch="{idx}" '
+            f'href="#{html.escape(ch["id"])}" title="{html.escape(ch.get("label", ch["id"]))}"></a>'
+        )
+    parts.append(
+        f'<nav class="sb-rail" aria-label="章节进度">'
+        f'{"".join(rail_dots)}'
+        f'<div class="sb-rail-foot">'
+        f'<b data-rail-cur>1</b>'
+        f'<span class="rail-foot-sep"></span>'
+        f'<span data-rail-tot>{n_ch}</span>'
+        f'</div>'
+        f'</nav>'
+    )
     parts.append('<div class="sb-bottom">finals-prepper · 期末复习</div>')
     parts.append('<div class="sb-resize" title="拖动调整宽度"></div>')
     return "\n".join(parts)
