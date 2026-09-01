@@ -65,11 +65,25 @@ body {
 /* ── Header ── */
 .header {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  color: #fff; padding: 16px 20px 12px; position: sticky; top: 0; z-index: 100;
+  color: #fff; padding: 14px 20px 12px; position: sticky; top: 0; z-index: 100;
   box-shadow: 0 2px 12px rgba(0,0,0,.15);
 }
+.header-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.header-titles { min-width: 0; }
 .header h1 { font-size: 20px; font-weight: 700; line-height: 1.3; }
 .header .sub { font-size: 12px; opacity: .72; margin-top: 2px; }
+.toggle-top-btn {
+  background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.25); color: #fff;
+  border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 13px; line-height: 1.4;
+  touch-action: manipulation; flex-shrink: 0; transition: transform .3s ease, background .2s ease;
+  margin-top: 2px;
+}
+.toggle-top-btn:hover { background: rgba(255,255,255,.25); }
+.toggle-top-btn.collapsed { transform: rotate(180deg); }
+
+/* 顶部可折叠栏（统计条 + 进度 + tab + 模式） */
+#topBars { overflow: hidden; transition: max-height .35s ease, opacity .3s ease; max-height: 400px; opacity: 1; }
+#topBars.hidden { max-height: 0; opacity: 0; }
 
 /* ── 统计条 ── */
 .stat-bar { display: flex; gap: 18px; padding: 10px 20px; background: #fff; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -222,10 +236,24 @@ body {
 .nav-fixed .nav-info { font-size: 12px; color: #999; white-space: nowrap; }
 .nav-fixed .btn { min-width: 80px; text-align: center; }
 
-/* ── 掌握度报告 ── */
-.report { display: none; background: var(--card); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 20px 22px; margin-bottom: 16px; }
-.report.show { display: block; }
-.report h2 { font-size: 17px; margin-bottom: 12px; }
+/* ── 掌握度报告（弹窗） ── */
+.report-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.report-overlay.show { display: flex; }
+.report-card {
+  background: #fff; border-radius: 16px; width: 100%; max-width: 640px; max-height: 86vh;
+  display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.3);
+  animation: reportPop .22s cubic-bezier(.22,.61,.36,1);
+}
+@keyframes reportPop { from { transform: translateY(14px) scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+.report-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.report-head h2 { font-size: 17px; }
+.report-close { background: none; border: none; font-size: 24px; line-height: 1; color: #999; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.report-close:hover { color: #333; background: #f2f2f2; }
+.report-body { padding: 16px 22px 22px; overflow-y: auto; }
 .score-box { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
 .score-box .ok { color: var(--correct); }
 table.kc { width: 100%; border-collapse: collapse; margin-top: 8px; }
@@ -253,12 +281,16 @@ table.kc th { background: #fafafa; }
   .nav-fixed .nav-inner { gap: 6px; }
   .nav-fixed .btn { min-width: 58px; padding: 8px 6px; font-size: 13px; }
   .nav-fixed .nav-info { font-size: 11px; }
+  .report-overlay { padding: 10px; }
+  .report-card { max-height: 90vh; border-radius: 14px; }
+  .report-head { padding: 14px 16px; }
+  .report-body { padding: 12px 14px 18px; }
 }
 
 /* ── 打印：全部题目 + 答案展开 ── */
 @media print {
   body { background: #fff; }
-  .header, .stat-bar, .progress, .nav, .mode-bar, .nav-fixed, .q-actions, .q-result { display: none !important; }
+  .header, #topBars, .report-overlay, .nav-fixed, .q-actions, .q-result { display: none !important; }
   .main { max-width: none; padding: 0; }
   .q-card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
   .quiz-list .q-card { display: block; }
@@ -407,9 +439,15 @@ def render(quiz: dict) -> str:
 
     parts = [
         '<div class="header">'
+        '<div class="header-inner">'
+        '<div class="header-titles">'
         f'<h1>{html.escape(course)} · 复习题</h1>'
         f'<div class="sub">共 {sum(type_counts.values())} 题 · 逐题作答 · 错题自动进错题集</div>'
+        '</div>'
+        '<button class="toggle-top-btn" id="toggleTopBtn" onclick="toggleTopBars()" title="显示/隐藏顶部栏" aria-label="显示/隐藏顶部栏">▲</button>'
+        '</div>'
         '</div>',
+        '<div id="topBars">',
         '<div class="stat-bar">'
         '<div class="stat-item blue"><span class="num" id="statDone">0</span><span class="lbl">已答</span></div>'
         '<div class="stat-item green"><span class="num" id="statRight">0</span><span class="lbl">正确</span></div>'
@@ -424,10 +462,10 @@ def render(quiz: dict) -> str:
         '<button class="mode-btn active" id="modeSeq" onclick="setOrder(false)">顺序</button>'
         '<button class="mode-btn" id="modeRnd" onclick="setOrder(true)">随机</button>'
         '<span class="spacer"></span>'
-        '<button class="link-btn" onclick="toggleReport()">📊 掌握度报告</button>'
+        '<button class="link-btn" onclick="openReport()">📊 掌握度报告</button>'
+        '</div>',
         '</div>',
         '<div class="main">',
-        '<div class="report" id="report"></div>',
         '<div class="quiz-list" id="quizList">',
     ]
 
@@ -447,6 +485,19 @@ def render(quiz: dict) -> str:
                  '<button class="btn btn-primary" id="submitBtn" onclick="submitCurrent()">提交答案</button>'
                  '<button class="btn btn-outline" onclick="move(1)">下一题</button>'
                  '</div></div>')
+
+    # 掌握度报告弹窗
+    parts.append(
+        '<div class="report-overlay" id="reportOverlay">'
+        '<div class="report-card">'
+        '<div class="report-head">'
+        '<h2>📊 掌握度报告</h2>'
+        '<button class="report-close" onclick="closeReport()" aria-label="关闭">×</button>'
+        '</div>'
+        '<div class="report-body" id="reportBody"></div>'
+        '</div>'
+        '</div>'
+    )
 
     return "\n".join(parts)
 
@@ -655,10 +706,18 @@ function updateStats(){
   document.getElementById('progressFill').style.width = pct + '%';
 }
 
-function toggleReport(){
-  var r = document.getElementById('report');
-  var show = r.classList.toggle('show');
-  if(show) renderReport();
+function openReport(){
+  renderReport();
+  document.getElementById('reportOverlay').classList.add('show');
+}
+function closeReport(){
+  document.getElementById('reportOverlay').classList.remove('show');
+}
+function toggleTopBars(){
+  var bars = document.getElementById('topBars');
+  var btn = document.getElementById('toggleTopBtn');
+  bars.classList.toggle('hidden');
+  btn.classList.toggle('collapsed');
 }
 function renderReport(){
   var kc = {};
@@ -673,8 +732,7 @@ function renderReport(){
   var kcMap = QUIZ.kcMap || {};
   var total=0, max=0;
   Object.keys(kc).forEach(function(k){ total+=kc[k].score; max+=kc[k].max; });
-  var html = '<h2>掌握度报告</h2>';
-  html += '<div class="score-box">客观题得分：<span class="ok">'+total+'</span> / '+max+' 分</div>';
+  var html = '<div class="score-box">客观题得分：<span class="ok">'+total+'</span> / '+max+' 分</div>';
   if(Object.keys(kc).length===0){
     html += '<div style="color:#888">还没有提交任何客观题，先做题吧。</div>';
   } else {
@@ -691,7 +749,7 @@ function renderReport(){
     });
     html += '</table>';
   }
-  document.getElementById('report').innerHTML = html;
+  document.getElementById('reportBody').innerHTML = html;
 }
 
 // 选项点击 → 选中态高亮（单选/判断互斥，多选独立切换）
@@ -713,6 +771,15 @@ document.addEventListener('click', function(e){
   if(type === 'choice' || type === 'tf'){
     submitCurrent();
   }
+});
+
+// 点弹窗遮罩空白处关闭（点卡片内部不关闭）
+document.getElementById('reportOverlay').addEventListener('click', function(e){
+  if(e.target === this) closeReport();
+});
+// ESC 关闭弹窗
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeReport();
 });
 
 // 初始化
