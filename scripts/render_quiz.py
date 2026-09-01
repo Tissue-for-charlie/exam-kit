@@ -62,6 +62,10 @@ body {
   background: var(--bg); color: var(--ink); min-height: 100vh; line-height: 1.7;
 }
 
+/* ── 隐藏页面滚动条（保留滚动能力） ── */
+html, body { scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+
 /* ── Header ── */
 .header {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
