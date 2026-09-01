@@ -524,9 +524,11 @@ OUTLINE_JS = """
   if (overlay) overlay.addEventListener('click', function(){
     body.classList.remove('sb-open'); setToggleIcon();
   });
-  // 移动端点目录链接后自动收起抽屉
+  // 点击目录/色点：立即高亮目标并「钉住」（防止滚动同步抢走高亮）；移动端顺带收起抽屉
   document.querySelectorAll('aside.sidebar .sb-toc a, aside.sidebar .sb-dot').forEach(function(a){
     a.addEventListener('click', function(){
+      var href = a.getAttribute('href') || '';
+      if (href.charAt(0) === '#'){ pinnedId = href.slice(1); setActive(pinnedId); }
       if (isMobile()){ body.classList.remove('sb-open'); setToggleIcon(); }
     });
   });
@@ -597,7 +599,52 @@ OUTLINE_JS = """
   // 章节顺序（按 DOM 出现顺序）
   var chapterOrder = Array.from(document.querySelectorAll('section.chapter[id]')).map(function(s){ return s.id; });
   var railCur = document.querySelector('[data-rail-cur]');
+
+  // ── 高亮绘制：统一刷新目录链接 + 折叠态色点 + 底部章节序号 ──
+  function paintActive(activeKcId, activeChId){
+    linkMap.forEach(function(a, id){
+      var on = (id === activeKcId) || (id === activeChId);
+      if (a.classList.contains('active') !== on) a.classList.toggle('active', on);
+    });
+    if (activeChId){
+      dotMap.forEach(function(d, id){
+        var on = (id === activeChId);
+        if (d.classList.contains('active') !== on) d.classList.toggle('active', on);
+      });
+      if (railCur){
+        var idx = chapterOrder.indexOf(activeChId);
+        if (idx >= 0) railCur.textContent = String(idx + 1);
+      }
+    }
+  }
+
+  // ── 点击导航：立即高亮目标并「钉住」，防止滚动同步（视口中心几何）立刻抢走高亮 ──
+  var pinnedId = null;
+  function setActive(id){
+    var isChapter = chapterOrder.indexOf(id) >= 0;
+    var activeChId, activeKcId;
+    if (isChapter){
+      activeChId = id;
+      activeKcId = null;
+      for (var i = 0; i < kcList.length; i++){
+        if (chapterOfKc.get(kcList[i].id) === id){ activeKcId = kcList[i].id; break; }
+      }
+    } else {
+      activeKcId = id;
+      activeChId = chapterOfKc.get(id) || null;
+    }
+    paintActive(activeKcId, activeChId);
+  }
+  // 用户主动滚动（滚轮/触摸/键盘翻页）时解除钉住，恢复「看到哪高亮哪」
+  function releasePin(){ pinnedId = null; }
+  window.addEventListener('wheel', releasePin, { passive: true });
+  window.addEventListener('touchstart', releasePin, { passive: true });
+  window.addEventListener('keydown', function(e){
+    var k = e.key;
+    if (k === 'ArrowDown' || k === 'ArrowUp' || k === 'PageDown' || k === 'PageUp' || k === 'Home' || k === 'End' || k === ' ') releasePin();
+  });
   function updateActive(){
+    if (pinnedId){ setActive(pinnedId); return; }
     if (!kcList.length) return;
     var vh = window.innerHeight;
     var vc = vh / 2;
@@ -615,23 +662,7 @@ OUTLINE_JS = """
     // 退化：视口内找不到"近中心"的（极短视口），用第一个可见的；都没有则激活第一个
     var activeKcId = bestId || firstVisibleId || kcList[0].id;
     var activeChId = chapterOfKc.get(activeKcId) || null;
-    linkMap.forEach(function(a, id){
-      var isActive = (id === activeKcId) || (id === activeChId);
-      if (a.classList.contains('active') !== isActive) {
-        a.classList.toggle('active', isActive);
-      }
-    });
-    // 同步色点高亮 + 底部当前章节序号
-    if (activeChId) {
-      dotMap.forEach(function(d, id){
-        var on = (id === activeChId);
-        if (d.classList.contains('active') !== on) d.classList.toggle('active', on);
-      });
-      if (railCur) {
-        var idx = chapterOrder.indexOf(activeChId);
-        if (idx >= 0) railCur.textContent = String(idx + 1);
-      }
-    }
+    paintActive(activeKcId, activeChId);
   }
   var rafScheduled = false;
   function scheduleUpdate(){
