@@ -31,10 +31,10 @@ OUTLINE_CSS = """
   --ink: #2b2a27;
   --muted: #6f6d66;
   --line: #e6e2d6;
-  --must: #c0392b;
-  --key: #e67e22;
-  --freq: #1f6fb2;
-  --info: #8b8b8b;
+  --must: #b91c1c;
+  --key: #92400e;
+  --freq: #1e40af;
+  --info: #6b7280;
   --accent: #1f3a5f;
 }
 
@@ -160,37 +160,34 @@ h3.kc {
   font-size: 15.5px;
   line-height: 1.9;
 }
-.kc-body strong { color: var(--navy); font-weight: 700; }
+.kc-body strong { color: #2b2a27; font-weight: 700; }
 
-/* 重要度标签（放大 + 图标） */
+/* 重要度标签（低饱和浅底深字） */
 .badge {
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12.5px;
+  gap: 3px;
+  font-size: 11.5px;
   font-weight: 600;
   line-height: 1;
-  padding: 5px 11px;
-  border-radius: 999px;
-  margin-left: 4px;
-  letter-spacing: .5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 6px;
+  letter-spacing: .3px;
 }
-.badge-ico { font-size: 13px; line-height: 1; }
-.tag-must { color: var(--must); background: #fdecea; border: 1px solid #f2bfba; }
-.tag-key  { color: #c96700; background: #fff3e0; border: 1px solid #ffd9a0; }
-.tag-freq { color: var(--freq); background: #e7f0fb; border: 1px solid #bfd6f0; }
-.tag-info { color: var(--info); background: #f1f1f1; border: 1px solid #dcdcdc; }
+.badge-ico { font-size: 11px; line-height: 1; }
+.tag-must { color: var(--must); background: #fee2e2; }
+.tag-key  { color: var(--key); background: #fff3e0; }
+.tag-freq { color: var(--freq); background: #e7f0fb; }
+.tag-info { color: var(--info); background: #f1f1f1; }
 
 /* 必考强调框 */
 .must-box {
-  background: #fdf3f2;
-  border: 1px solid #f2d0cc;
-  border-left: 5px solid var(--must);
-  border-radius: 10px;
-  padding: 14px 18px 16px;
-  margin: 16px 0;
-  box-shadow: 0 1px 4px rgba(192,57,43,.06);
+  background: #fff;
+  border-left: 3px solid var(--must);
+  padding: 12px 16px 14px;
+  margin: 14px 0;
 }
 .must-box .kc { margin-top: 0; }
 
@@ -225,8 +222,8 @@ details.selftest[open] summary::after { content: " ▴"; }
 }
 .selftest-a {
   margin-top: 10px;
-  color: #2e7d32;
-  background: #eef7ee;
+  color: #3a3934;
+  background: #f3f1e9;
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 14.5px;
@@ -250,17 +247,18 @@ details.selftest[open] summary::after { content: " ▴"; }
 
 IMPORTANCE_META = {
     "must": ("必考", "tag-must", "🔥"),
-    "key": ("重点", "tag-key", "⭐"),
-    "freq": ("高频", "tag-freq", "📈"),
-    "info": ("了解", "tag-info", "👀"),
+    "key": ("重点", "tag-key", ""),
+    "freq": ("高频", "tag-freq", ""),
+    "info": ("了解", "tag-info", ""),
 }
 
 _CHAPTER_RE = re.compile(r"^第\s*([0-9]+|[一二三四五六七八九十百]+)\s*[章节]\s*[、.．:：]?\s*(.*)$")
 
 
 def outline_badge(importance: str) -> str:
-    label, cls, icon = IMPORTANCE_META.get(importance, ("了解", "tag-info", "👀"))
-    return f'<span class="badge {cls}"><span class="badge-ico">{icon}</span>{label}</span>'
+    label, cls, icon = IMPORTANCE_META.get(importance, ("了解", "tag-info", ""))
+    ico = f'<span class="badge-ico">{icon}</span>' if icon else ""
+    return f'<span class="badge {cls}">{ico}{label}</span>'
 
 
 def render_markup(text: str) -> str:
