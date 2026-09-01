@@ -177,11 +177,11 @@ window.addEventListener('keydown', e=>{ if(e.key==='0'){ scale=1; tx=0; ty=0; ap
 
 GRAPH_CSS = """
 .graph-hint { color: var(--muted); font-size: 12.5px; margin-bottom: 8px; }
-.graph-box { background: #fffdf7; border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow: hidden; }
-.graph-box svg { touch-action: none; display: block; }
+.graph-stage { margin: 0 -24px; }
+.graph-stage svg { touch-action: none; display: block; width: 100%; }
 @media (max-width: 600px) {
   .graph-hint { font-size: 11.5px; }
-  .graph-box { padding: 8px; }
+  .graph-stage { margin: 0 -14px; }
 }
 """
 
@@ -202,7 +202,7 @@ def main():
     body = (f'<h1 class="course-title">{html.escape(course)}</h1>'
             '<div class="course-sub">知识图谱 · 依赖关系虚线，枢纽概念带 ★ 星标</div>'
             '<div class="graph-hint no-print">拖拽平移 · 滚轮缩放 · 悬停看详情 · 按 0 复位</div>'
-            '<div class="graph-box">' + render(chapter_nodes, kc_nodes, total_h) + "</div>")
+            '<div class="graph-stage">' + render(chapter_nodes, kc_nodes, total_h) + "</div>")
 
     safe = re.sub(r'[\\/:*?"<>|]', "_", course)
     out = os.path.join(root, f"{safe}-知识图谱.html")
