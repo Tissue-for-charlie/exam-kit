@@ -95,7 +95,7 @@ python <skill目录>/scripts/extract.py <资料目录>
           "id": "ch1.kc1",
           "label": "知识点名（精炼，可背）",
           "importance": "must | key | freq | info",
-          "content": "1-2 句话：是什么 → 为什么重要 → 怎么考",
+          "content": "1-2 句话：是什么 → 为什么重要 → 怎么考；**关键术语用 **术语** 标记**，渲染时加粗 + 主题蓝高亮（每条 content 至少标 1-3 个核心术语）",
           "deps": ["依赖的知识点 id，可为空数组"],
           "is_hub": false
         }
@@ -191,7 +191,7 @@ python <skill目录>/scripts/render_graph.py <资料目录>
 
 | 脚本 | 产物 | 内容 |
 |---|---|---|
-| render_outline.py | `<课程名>-复习提纲.html` | 顶部课程名 + 目录；每章 H2，知识点 H3 带四色标签（红必考/橙重点/蓝高频/灰了解），正文即 `content`；章末折叠自测（selftests） |
+| render_outline.py | `<课程名>-复习提纲.html` | 衬线教材风：宋体标题 + 黑体正文，章节标题深蓝渐变实色块 + 大号水印编号，目录卡片化；知识点 H3 带序号圆点 + 四色图标标签（🔥必考/⭐重点/📈高频/👀了解）；**content 里的 **术语** 渲染为深蓝加粗高亮**；**importance=must 的知识点整体用浅红强调框框起**；章末折叠自测（selftests） |
 | render_quiz.py | `<课程名>-复习题.html` | 刷题 App 风：深色 header + 统计条/进度条 + 题型/章节 tab + 顺序/随机模式；单题视图逐题「提交」判对错、高亮答案、显示解析与易错点；做错的题自动进「错题集」可重刷；主观题一键看参考答案；「掌握度报告」按知识点聚合得分率标薄弱；Ctrl+P 打印时全部题目+答案+解析展开 |
 | render_graph.py | `<课程名>-知识图谱.html` | 左章右知识点布局，`deps` 画依赖虚线，`is_hub` 加星标，可拖拽/缩放/悬停 tooltip |
 
