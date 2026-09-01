@@ -134,17 +134,55 @@ GRAPH_JS = r"""
 const svg=document.getElementById('g');
 let scale=1, tx=0, ty=0;
 function apply(){ svg.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')'; svg.style.transformOrigin='0 0'; }
+
+// ── 鼠标：拖拽平移 + 滚轮缩放 ──
 let dragging=false, sx=0, sy=0;
 svg.addEventListener('mousedown', e=>{ dragging=true; sx=e.clientX-tx; sy=e.clientY-ty; svg.style.cursor='grabbing'; });
 window.addEventListener('mousemove', e=>{ if(!dragging) return; tx=e.clientX-sx; ty=e.clientY-sy; apply(); });
 window.addEventListener('mouseup', ()=>{ dragging=false; svg.style.cursor='grab'; });
 svg.addEventListener('wheel', e=>{ e.preventDefault(); const d=e.deltaY>0?0.9:1.1; scale=Math.min(3,Math.max(0.3,scale*d)); apply(); }, {passive:false});
+
+// ── 触摸：单指拖拽平移 + 双指 pinch 缩放 ──
+let pinchDist=0, pinchScale=1;
+svg.addEventListener('touchstart', e=>{
+  if(e.touches.length===1){
+    dragging=true; sx=e.touches[0].clientX-tx; sy=e.touches[0].clientY-ty;
+  } else if(e.touches.length===2){
+    dragging=false;
+    pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    pinchScale=scale;
+  }
+}, {passive:false});
+svg.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  if(e.touches.length===1 && dragging){
+    tx=e.touches[0].clientX-sx; ty=e.touches[0].clientY-sy; apply();
+  } else if(e.touches.length===2 && pinchDist>0){
+    const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    scale=Math.min(3,Math.max(0.3,pinchScale*d/pinchDist)); apply();
+  }
+}, {passive:false});
+svg.addEventListener('touchend', e=>{
+  if(e.touches.length===0){ dragging=false; pinchDist=0; }
+  else if(e.touches.length===1){
+    pinchDist=0;
+    dragging=true; sx=e.touches[0].clientX-tx; sy=e.touches[0].clientY-ty;
+  }
+});
+svg.addEventListener('touchcancel', ()=>{ dragging=false; pinchDist=0; });
+
+// 复位
 window.addEventListener('keydown', e=>{ if(e.key==='0'){ scale=1; tx=0; ty=0; apply(); } });
 """
 
 GRAPH_CSS = """
 .graph-hint { color: var(--muted); font-size: 12.5px; margin-bottom: 8px; }
 .graph-box { background: #fffdf7; border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow: hidden; }
+.graph-box svg { touch-action: none; display: block; }
+@media (max-width: 600px) {
+  .graph-hint { font-size: 11.5px; }
+  .graph-box { padding: 8px; }
+}
 """
 
 

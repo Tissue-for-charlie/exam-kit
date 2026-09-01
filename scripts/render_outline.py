@@ -205,6 +205,9 @@ body.sb-collapsed aside.sidebar .sb-bottom { opacity: 0; pointer-events: none; }
 body.sb-collapsed aside.sidebar .sb-resize { display: none; }
 body.sb-collapsed button.sb-toggle { left: 46px; }
 
+/* 移动端抽屉遮罩（桌面端隐藏，移动端媒体查询里启用） */
+.sb-overlay { display: none; }
+
 /* ===== Main Content ===== */
 main.content {
   max-width: 760px;
@@ -372,15 +375,46 @@ details.selftest[open] summary { color: var(--ink); }
 }
 
 @media (max-width: 600px) {
-  body { padding-left: 60px; }
-  aside.sidebar { width: 60px; }
-  aside.sidebar .sb-top,
-  aside.sidebar .sb-toc,
-  aside.sidebar .sb-bottom { opacity: 0; pointer-events: none; }
-  main.content { padding: 40px 18px 90px; }
+  body { padding-left: 0; }
+  /* Sidebar 变 off-canvas 抽屉：默认滑出屏幕外 */
+  aside.sidebar {
+    width: 280px;
+    transform: translateX(-100%);
+    box-shadow: none;
+    transition: transform .28s cubic-bezier(.22,.61,.36,1);
+  }
+  body.sb-open aside.sidebar {
+    transform: translateX(0);
+    box-shadow: 0 0 44px rgba(31,30,29,.22);
+  }
+  /* 移动端废除「60px 折叠细条」形态：sb-collapsed 不再压缩宽度/隐藏内容 */
+  body.sb-collapsed { padding-left: 0; }
+  body.sb-collapsed aside.sidebar { width: 280px; }
+  body.sb-collapsed aside.sidebar .sb-top,
+  body.sb-collapsed aside.sidebar .sb-toc,
+  body.sb-collapsed aside.sidebar .sb-bottom { opacity: 1; pointer-events: auto; }
+  body.sb-collapsed button.sb-toggle { left: 14px; }
+  /* resize 把手移动端禁用 */
+  .sb-resize { display: none; }
+  /* 遮罩启用 */
+  .sb-overlay {
+    display: block; position: fixed; inset: 0; z-index: 45;
+    background: rgba(31,30,29,.42);
+    opacity: 0; pointer-events: none; transition: opacity .28s ease;
+  }
+  body.sb-open .sb-overlay { opacity: 1; pointer-events: auto; }
+  /* 折叠切换按钮固定左上角（脱离 --sbw 联动） */
+  button.sb-toggle { left: 14px; top: 14px; }
+  body.sb-open button.sb-toggle { left: 252px; }
+  /* 进度条跨全屏 */
+  .progress { left: 0; }
+  main.content { padding: 44px 18px 90px; }
   h1.course-title { font-size: 34px; }
-  .stats { gap: 34px; }
+  .stats { gap: 30px; }
+  .stat b { font-size: 27px; }
   .ch-head h2 { font-size: 21px; }
+  .ch-index { font-size: 30px; }
+  .backtop { right: 16px; bottom: 20px; width: 40px; height: 40px; }
 }
 """
 
@@ -392,17 +426,40 @@ OUTLINE_JS = """
   var toggleBtn = document.getElementById('sb-toggle');
   var SBW_KEY = 'fp-sbw';
 
-  // ── Sidebar 折叠切换 ──
+  // ── Sidebar 折叠切换（桌面端 sb-collapsed 折叠细条 / 移动端 sb-open 抽屉）──
+  var mqMobile = window.matchMedia('(max-width: 600px)');
+  function isMobile(){ return mqMobile.matches; }
+  function isClosed(){
+    return isMobile() ? !body.classList.contains('sb-open') : body.classList.contains('sb-collapsed');
+  }
   function setToggleIcon(){
-    toggleBtn.textContent = body.classList.contains('sb-collapsed') ? '\u2630' : '\u2715';
-    toggleBtn.title = body.classList.contains('sb-collapsed') ? '展开目录' : '折叠目录';
+    var closed = isClosed();
+    toggleBtn.textContent = closed ? '\u2630' : '\u2715';
+    toggleBtn.title = closed ? '展开目录' : '折叠目录';
     toggleBtn.setAttribute('aria-label', toggleBtn.title);
   }
   setToggleIcon();
   toggleBtn.addEventListener('click', function(){
-    body.classList.toggle('sb-collapsed');
+    if (isMobile()) { body.classList.toggle('sb-open'); }
+    else { body.classList.toggle('sb-collapsed'); }
     setToggleIcon();
-    try { localStorage.setItem('fp-sbw-collapse', body.classList.contains('sb-collapsed') ? '1' : '0'); } catch(e){}
+    try { localStorage.setItem('fp-sbw-collapse', isClosed() ? '1' : '0'); } catch(e){}
+  });
+  // 遮罩点击关闭抽屉（移动端）
+  var overlay = document.getElementById('sb-overlay');
+  if (overlay) overlay.addEventListener('click', function(){
+    body.classList.remove('sb-open'); setToggleIcon();
+  });
+  // 移动端点目录链接后自动收起抽屉
+  document.querySelectorAll('aside.sidebar .sb-toc a').forEach(function(a){
+    a.addEventListener('click', function(){
+      if (isMobile()){ body.classList.remove('sb-open'); setToggleIcon(); }
+    });
+  });
+  // 跨断点（如旋转屏幕/拖拽窗口）时刷新图标与遮罩状态
+  mqMobile.addEventListener('change', function(){
+    body.classList.remove('sb-open');
+    setToggleIcon();
   });
 
   // ── Sidebar Resize ──
@@ -435,13 +492,13 @@ OUTLINE_JS = """
     try { localStorage.setItem(SBW_KEY, String(Math.round(w))); } catch(e){}
   });
 
-  // ── 还原持久化的宽度/折叠状态 ──
+  // ── 还原持久化的宽度/折叠状态（仅桌面端；移动端默认抽屉收起）──
   try {
     var saved = parseFloat(localStorage.getItem(SBW_KEY));
     if (!isNaN(saved) && saved >= 180 && saved <= 560) {
       root.style.setProperty('--sbw', saved + 'px');
     }
-    if (localStorage.getItem('fp-sbw-collapse') === '1') body.classList.add('sb-collapsed');
+    if (!isMobile() && localStorage.getItem('fp-sbw-collapse') === '1') body.classList.add('sb-collapsed');
     setToggleIcon();
   } catch(e){}
 
@@ -685,6 +742,7 @@ def render(skeleton: dict) -> str:
         '<aside class="sidebar">',
         render_sidebar(skeleton),
         '</aside>',
+        '<div class="sb-overlay" id="sb-overlay"></div>',
         '<button class="sb-toggle no-print" id="sb-toggle" aria-label="折叠目录"></button>',
         render_main(skeleton),
         '<button class="backtop no-print" id="backtop" title="回到顶部">↑</button>',

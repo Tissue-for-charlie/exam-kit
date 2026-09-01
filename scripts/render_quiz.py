@@ -238,12 +238,21 @@ table.kc th { background: #fafafa; }
 
 /* ── 移动端 ── */
 @media (max-width: 480px) {
-  .header h1 { font-size: 17px; }
+  .header { padding: 12px 14px 10px; }
+  .header h1 { font-size: 16px; }
+  .header .sub { font-size: 11px; }
+  .stat-bar { gap: 12px; padding: 8px 14px; }
+  .stat-item .num { font-size: 15px; }
+  .main { padding: 12px 10px 88px; }
   .q-card { padding: 16px 15px; }
   .q-stem { font-size: 15px; }
   .option { padding: 13px 12px; gap: 10px; font-size: 14px; min-height: 50px; }
   .option .opt-key { width: 30px; height: 30px; }
-  .nav-fixed .btn { min-width: 68px; padding: 8px 10px; }
+  .tf-group { gap: 8px; }
+  .nav-fixed { padding: 8px 10px; }
+  .nav-fixed .nav-inner { gap: 6px; }
+  .nav-fixed .btn { min-width: 58px; padding: 8px 6px; font-size: 13px; }
+  .nav-fixed .nav-info { font-size: 11px; }
 }
 
 /* ── 打印：全部题目 + 答案展开 ── */
@@ -745,7 +754,7 @@ def main():
     html_doc = (
         '<!DOCTYPE html>\n<html lang="zh">\n<head>\n'
         '<meta charset="utf-8">\n'
-        '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f'<title>{course} · 复习题</title>\n'
         f'<style>{QUIZ_CSS}</style>\n'
         '</head>\n<body>\n'
