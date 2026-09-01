@@ -339,6 +339,7 @@ def _render_question(q, gid):
 
     # 操作按钮（单选/判断：点击选项自动判分；多选/填空/主观题：手动提交）
     if t in SUBJECTIVE:
+        lines.append(f'<div class="q-stem">{qtext}</div>')
         lines.append('<textarea class="subj-input" placeholder="在此输入你的答案……"></textarea>')
         lines.append('<div class="q-actions">'
                      f'<button class="btn btn-primary" onclick="submitCurrent()">提交答案</button>'
