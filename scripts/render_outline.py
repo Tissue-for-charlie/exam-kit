@@ -389,7 +389,7 @@ def render(skeleton: dict) -> str:
         parts.append(
             f'<li class="ch"><span class="toc-no">{html.escape(no)}</span>'
             f'<a href="#{html.escape(cid)}">{html.escape(label)}</a>'
-            f' {outline_badge(imp)}{count_html}</li>'
+            f' {count_html}</li>'
         )
         for kc in kcs:
             parts.append(
@@ -409,7 +409,7 @@ def render(skeleton: dict) -> str:
         parts.append(
             f'<div class="ch-head">{no_html}'
             f'<h2>{html.escape(title)}</h2>'
-            f'{outline_badge(imp)}</div>'
+            f'</div>'
         )
         if ch.get("summary"):
             parts.append(
@@ -420,9 +420,10 @@ def render(skeleton: dict) -> str:
         for kc in ch.get("kcs", []):
             kimp = kc.get("importance", "info")
             parts.append(f'<article class="kc" id="{html.escape(kc["id"])}">')
+            tag_html = "" if kimp == "must" else outline_badge(kimp)
             parts.append(
                 f'<h3><span class="kc-title">{html.escape(kc["label"])}</span>'
-                f'{outline_badge(kimp)}</h3>'
+                f'{tag_html}</h3>'
             )
             if kc.get("content"):
                 body = render_markup(kc["content"])
