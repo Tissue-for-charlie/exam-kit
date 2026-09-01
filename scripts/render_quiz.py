@@ -115,6 +115,7 @@ body {
 .mode-bar .mode-label { color: var(--muted); }
 .mode-btn { padding: 4px 13px; border-radius: 12px; font-size: 12px; cursor: pointer; border: 1px solid #d9d9d9; background: #fff; color: #444; }
 .mode-btn.active { background: #e6f7ff; border-color: var(--accent2); color: var(--accent2); }
+.mode-btn .cnt { font-size: 11px; opacity: .7; margin-left: 3px; }
 .mode-bar .spacer { flex: 1; }
 .link-btn { background: none; border: none; color: var(--accent2); font-size: 13px; cursor: pointer; padding: 4px 6px; }
 
@@ -416,7 +417,7 @@ def render(quiz: dict) -> str:
                 total_obj += 1
             type_counts[q["type"]] = type_counts.get(q["type"], 0) + 1
 
-    # 题型 tab：全部 + 实际存在的客观题型 + 主观（若有）+ 错题集
+    # 题型 tab：全部 + 实际存在的客观题型 + 主观（若有）。错题/未答走顶部「刷题模式」。
     type_order = ["choice", "multi", "tf", "fill"]
     type_tabs = ['<button class="active" data-type="all" onclick="setType(this)">全部'
                  f'<span class="cnt">{sum(type_counts.values())}</span></button>']
@@ -428,8 +429,6 @@ def render(quiz: dict) -> str:
         subj_n = sum(type_counts[t] for t in type_counts if t in SUBJECTIVE)
         type_tabs.append(f'<button data-type="subj" onclick="setType(this)">主观题'
                          f'<span class="cnt">{subj_n}</span></button>')
-    type_tabs.append('<button data-type="wrong" onclick="setType(this)">错题集'
-                     '<span class="cnt" id="wrongCnt">0</span></button>')
 
     # 章节 tab
     chapter_tabs = ['<button class="active" data-chapter="all" onclick="setChapter(this)">全部章节</button>']
@@ -458,9 +457,11 @@ def render(quiz: dict) -> str:
         f'<div class="nav">{"".join(type_tabs)}</div>',
         f'<div class="nav chapter-nav">{"".join(chapter_tabs)}</div>',
         '<div class="mode-bar">'
-        '<span class="mode-label">模式</span>'
-        '<button class="mode-btn active" id="modeSeq" onclick="setOrder(false)">顺序</button>'
-        '<button class="mode-btn" id="modeRnd" onclick="setOrder(true)">随机</button>'
+        '<span class="mode-label">刷题模式：</span>'
+        '<button class="mode-btn active" data-mode="all" onclick="setMode(this)">全部题目</button>'
+        '<button class="mode-btn" data-mode="wrong" onclick="setMode(this)">仅错题<span class="cnt" id="wrongCnt">0</span></button>'
+        '<button class="mode-btn" data-mode="unanswered" onclick="setMode(this)">仅未答</button>'
+        '<button class="mode-btn" data-mode="random" onclick="setMode(this)">随机顺序</button>'
         '<span class="spacer"></span>'
         '<button class="link-btn" onclick="openReport()">📊 掌握度报告</button>'
         '</div>',
@@ -512,7 +513,7 @@ var ALL = [];          // 扁平化题目
 var wrongSet = {};     // qid -> true（做错）
 var submitted = {};    // qid -> true（已提交）
 var results = {};      // qid -> true（答对）
-var state = {type:'all', chapter:'all', random:false, idx:0};
+var state = {type:'all', chapter:'all', mode:'all', idx:0};
 var curList = [];      // 当前过滤后的列表
 
 function flatten(){
@@ -529,13 +530,14 @@ function shuffle(a){
 }
 function rebuildList(){
   var L = ALL.filter(function(q){
-    if(state.type==='wrong') return !!wrongSet[q.id];
     if(state.type==='subj') return !!SUBJ[q.type];
     if(state.type!=='all' && q.type!==state.type) return false;
     if(state.chapter!=='all' && q.chapterId!==state.chapter) return false;
+    if(state.mode==='wrong') return !!wrongSet[q.id];
+    if(state.mode==='unanswered') return !submitted[q.id];
     return true;
   });
-  if(state.random) L = shuffle(L.slice());
+  if(state.mode==='random') L = shuffle(L.slice());
   curList = L;
   if(curList.length===0) state.idx = -1;
   else if(state.idx >= curList.length) state.idx = curList.length-1;
@@ -566,12 +568,12 @@ function setChapter(btn){
   state.idx = 0;
   rebuildList(); renderCurrent(); updateStats();
 }
-function setOrder(rnd){
-  state.random = rnd;
-  document.getElementById('modeSeq').classList.toggle('active', !rnd);
-  document.getElementById('modeRnd').classList.toggle('active', rnd);
+function setMode(btn){
+  document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  state.mode = btn.dataset.mode;
   state.idx = 0;
-  rebuildList(); renderCurrent();
+  rebuildList(); renderCurrent(); updateStats();
 }
 
 function renderCurrent(){
@@ -579,7 +581,14 @@ function renderCurrent(){
   var empty = document.getElementById('empty');
   var info = document.getElementById('navInfo');
   if(curList.length===0){
-    if(empty) empty.style.display = 'block';
+    if(empty){
+      empty.style.display = 'block';
+      empty.innerHTML = state.mode==='wrong'
+        ? '<div style="font-size:40px;margin-bottom:8px">🎉</div>太棒了，没有错题！'
+        : state.mode==='unanswered'
+        ? '<div style="font-size:40px;margin-bottom:8px">🎉</div>题目已全部作答！'
+        : '当前筛选下没有题目';
+    }
     if(info) info.textContent = '0 / 0';
     return;
   }
@@ -685,8 +694,8 @@ function submitCurrent(){
   res.className = 'q-result ' + (correct?'ok':'bad');
   card.querySelector('.answer-static').classList.add('show');
   updateStats();
-  // 若在错题集且已改对，列表变化需刷新
-  if(state.type==='wrong' && correct && wasWrong){ rebuildList(); renderCurrent(); }
+  // 若在「仅错题」模式且已改对，列表变化需刷新
+  if(state.mode==='wrong' && correct && wasWrong){ rebuildList(); renderCurrent(); }
 }
 
 function updateStats(){
