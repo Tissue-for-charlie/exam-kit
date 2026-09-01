@@ -295,27 +295,29 @@ def _render_question(q, gid):
     lines.append(f'<div class="q-header"><div class="q-tags">{"".join(tags)}</div>'
                  f'<div style="display:flex;align-items:center;gap:8px">{src_ref}<span class="q-num">第 {gid} 题</span></div></div>')
 
-    # 题干
+    # 题干（fill 题型在下方把下划线替换成填空输入框）
     qtext = html.escape(q["question"])
-    lines.append(f'<div class="q-stem">{qtext}</div>')
 
-    # 作答区
+    # 作答区（选项用纯 div + JS 管理选中态，不依赖 label/input 默认行为，兼容任何 webview）
     if t == "choice":
+        lines.append(f'<div class="q-stem">{qtext}</div>')
         lines.append('<div class="options">')
         for i, o in enumerate(q["options"]):
-            lines.append(f'<label class="option"><input type="radio" name="{qid}" value="{i}">'
-                         f'<span class="opt-key">{chr(65 + i)}</span><span>{html.escape(o)}</span></label>')
+            lines.append(f'<div class="option" data-val="{i}">'
+                         f'<span class="opt-key">{chr(65 + i)}</span><span>{html.escape(o)}</span></div>')
         lines.append("</div>")
     elif t == "multi":
+        lines.append(f'<div class="q-stem">{qtext}</div>')
         lines.append('<div class="options">')
         for i, o in enumerate(q["options"]):
-            lines.append(f'<label class="option"><input type="checkbox" name="{qid}" value="{i}">'
-                         f'<span class="opt-key">{chr(65 + i)}</span><span>{html.escape(o)}</span></label>')
+            lines.append(f'<div class="option" data-val="{i}">'
+                         f'<span class="opt-key">{chr(65 + i)}</span><span>{html.escape(o)}</span></div>')
         lines.append("</div>")
     elif t == "tf":
+        lines.append(f'<div class="q-stem">{qtext}</div>')
         lines.append(f'<div class="options tf-group">'
-                     f'<label class="option"><input type="radio" name="{qid}" value="true"><span class="opt-key">✓</span><span>正确</span></label>'
-                     f'<label class="option"><input type="radio" name="{qid}" value="false"><span class="opt-key">✗</span><span>错误</span></label>'
+                     f'<div class="option" data-val="true"><span class="opt-key">✓</span><span>正确</span></div>'
+                     f'<div class="option" data-val="false"><span class="opt-key">✗</span><span>错误</span></div>'
                      f'</div>')
     elif t == "fill":
         idx = [0]
@@ -520,13 +522,13 @@ function move(d){
 
 function grade(q, card){
   if(q.type==='choice' || q.type==='tf'){
-    var sel = card.querySelector('input[type=radio]:checked');
+    var sel = card.querySelector('.option.selected');
     if(!sel) return null;
-    return sel.value === String(q.answer);
+    return sel.dataset.val === String(q.answer);
   }
   if(q.type==='multi'){
-    var sels = Array.prototype.slice.call(card.querySelectorAll('input[type=checkbox]:checked'))
-      .map(function(i){return parseInt(i.value,10);}).sort(function(a,b){return a-b;});
+    var sels = Array.prototype.slice.call(card.querySelectorAll('.option.selected'))
+      .map(function(o){return parseInt(o.dataset.val,10);}).sort(function(a,b){return a-b;});
     var ans = q.answer.slice().sort(function(a,b){return a-b;});
     if(sels.length===0) return null;
     return JSON.stringify(sels)===JSON.stringify(ans);
@@ -545,19 +547,17 @@ function grade(q, card){
 function highlight(card, q){
   if(q.type==='choice' || q.type==='tf'){
     var ansVal = String(q.answer);
-    card.querySelectorAll('input[type=radio]').forEach(function(r){
-      var opt = r.closest('.option');
-      if(r.value===ansVal) opt.classList.add('correct');
-      if(r.checked && r.value!==ansVal) opt.classList.add('wrong');
+    card.querySelectorAll('.option').forEach(function(o){
+      if(o.dataset.val===ansVal) o.classList.add('correct');
+      if(o.classList.contains('selected') && o.dataset.val!==ansVal) o.classList.add('wrong');
     });
   } else if(q.type==='multi'){
     var ansSet = {};
     q.answer.forEach(function(i){ansSet[i]=1;});
-    card.querySelectorAll('input[type=checkbox]').forEach(function(cb){
-      var opt = cb.closest('.option');
-      var v = parseInt(cb.value,10);
-      if(ansSet[v]) opt.classList.add('correct');
-      if(cb.checked && !ansSet[v]) opt.classList.add('wrong');
+    card.querySelectorAll('.option').forEach(function(o){
+      var v = parseInt(o.dataset.val,10);
+      if(ansSet[v]) o.classList.add('correct');
+      if(o.classList.contains('selected') && !ansSet[v]) o.classList.add('wrong');
     });
   } else if(q.type==='fill'){
     var ans = (q.answer||[]).map(function(a){return norm(a);});
@@ -584,6 +584,7 @@ function submitCurrent(){
   else { wrongSet[q.id] = true; }
   // 高亮选项 + 显示结果 + 答案解析
   highlight(card, q);
+  card.classList.add('answered');
   card.querySelectorAll('.option').forEach(function(o){o.classList.add('disabled');});
   var res = card.querySelector('.q-result');
   var pts = parseInt(card.dataset.points)||0;
@@ -658,6 +659,23 @@ function renderReport(){
   }
   document.getElementById('report').innerHTML = html;
 }
+
+// 选项点击 → 选中态高亮（单选/判断互斥，多选独立切换）
+// 用纯 click 事件 + 状态类管理，不依赖 label/input 默认行为，兼容任何 webview/iframe。
+document.addEventListener('click', function(e){
+  var opt = e.target && e.target.closest ? e.target.closest('.option') : null;
+  if(!opt) return;
+  var card = opt.closest('.q-card');
+  if(!card) return;
+  if(card.classList.contains('answered')) return; // 已提交，锁定
+  var type = card.dataset.type;
+  if(type === 'multi'){
+    opt.classList.toggle('selected');
+  } else {
+    card.querySelectorAll('.option').forEach(function(o){ o.classList.remove('selected'); });
+    opt.classList.add('selected');
+  }
+});
 
 // 初始化
 flatten();
