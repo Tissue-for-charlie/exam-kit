@@ -1,0 +1,37 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} · Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12"]
+    runs-on: ${{ matrix.os }}
+    env:
+      # Keep stdout/stderr deterministic on non-UTF-8 Windows locales; the
+      # suite itself is locale-independent, this only guards tooling.
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile all Python
+        # py_compile is called from Python so the glob works on Windows too.
+        run: python -c "import glob,py_compile; [py_compile.compile(f,doraise=True) for f in glob.glob('showcase/*.py')+glob.glob('scripts/*.py')+glob.glob('tests/*.py')]"
+      - name: Build deterministic showcase
+        run: python showcase/build_showcase.py
+      - name: Run test suite
+        run: python -m unittest discover -s tests -v
+      - name: Validate fixture JSON
+        run: python -m json.tool showcase/fixture/course.json
+      - name: Regenerate README previews (no browser is fine)
+        run: python showcase/screenshot_showcase.py
