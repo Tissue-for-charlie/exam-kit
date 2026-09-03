@@ -199,7 +199,12 @@ python <skill目录>/scripts/render_graph.py <资料目录>
 
 ### Phase 5 · 预览交付
 
-用 present_files 把三份 HTML 一起呈现，第一份放复习提纲。
+用 present_files（Claude Code）把三份 HTML 一起呈现，第一份放复习提纲；其他 runtime 则打开浏览器或把三份文件路径明确交给用户。按命令路由，若用户只要其中某份，只交付对应份。
+
+## 运行前提
+
+- **`<skill目录>` = 本 SKILL.md（及其 `scripts/`）所在的目录。** 装进 Claude Code 后它即 `~/.claude/skills/exam-kit/` 或项目内 `.claude/skills/exam-kit/` 的绝对路径；其他 runtime 同理指向 skill 目录。脚本不在 PATH 里，调用时用该绝对路径替换 `<skill目录>`。
+- 三份 HTML 与 `.final_prep/` 都写在用户给的**资料目录**下，不会散落到 skill 目录。
 
 ## 依赖安装
 
@@ -214,7 +219,7 @@ pip install python-pptx python-docx pypdf
 ## 产物管理
 
 - 三份 HTML 输出到**资料目录**下，文件名固定（课程名-复习提纲.html 等）。
-- 中间产物（manifest、bundle、骨架、题目 JSON）都在 `.final_prep/`，二次运行命中缓存时直接复用，秒出。
+- 中间产物（manifest、bundle、骨架、题目 JSON）都在 `.final_prep/`。**同一资料目录**再次复习、资料未变时，直接复用已有 bundle/骨架/题库进入下一步即可，不必重跑 scan/extract；**换了资料目录必须重跑**——`.final_prep` 是按目录缓存的，不要跨目录复用。
 - 不污染资料目录根目录，测试临时文件用完即删。
 
 ## 常见问题处理
