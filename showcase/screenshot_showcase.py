@@ -50,7 +50,7 @@ def capture(browser) -> dict[str, int]:
     sizes: dict[str, int] = {}
     PREVIEW.mkdir(parents=True, exist_ok=True)
     for name, fname, click, full_page in TARGETS:
-        viewport = {"width": 1440, "height": 1000}
+        viewport = {"width": 780, "height": 1000}
         page = browser.new_page(viewport=viewport, device_scale_factor=1)
         try:
             page.goto((OUTPUT / fname).as_uri(), wait_until="load")
