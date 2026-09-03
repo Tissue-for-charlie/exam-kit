@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -16,16 +17,29 @@ BUILDER = ROOT / "showcase" / "build_showcase.py"
 FIXTURE = ROOT / "showcase" / "fixture" / "course.json"
 OUTPUT = ROOT / "showcase" / "output"
 
+# Child interpreters write their stderr using the locale encoding on some
+# platforms (e.g. cp936 on Chinese Windows). The child tracebacks we assert on
+# can therefore contain non-UTF-8 bytes even when the repo path is pure ASCII,
+# and always will when a non-ASCII path is present. Force UTF-8 in children and
+# decode defensively so the suite passes on every locale, not just UTF-8 ones.
+RUN_ENV = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
+
+
+def _run(*args: object) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [*args],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=RUN_ENV,
+    )
+
 
 class ShowcaseTests(unittest.TestCase):
     def run_builder(self, *args: str) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [sys.executable, str(BUILDER), *args],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        )
+        return _run(sys.executable, str(BUILDER), *args)
 
     def setUp(self) -> None:
         self.original_fixture = FIXTURE.read_bytes()
@@ -93,13 +107,7 @@ class ShowcaseTests(unittest.TestCase):
                 "from showcase.build_showcase import load_fixture; "
                 "load_fixture(__import__('pathlib').Path(sys.argv[2]))"
             )
-            result = subprocess.run(
-                [sys.executable, "-c", helper, str(ROOT), str(altered)],
-                cwd=ROOT,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            )
+            result = _run(sys.executable, "-c", helper, str(ROOT), str(altered))
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("must not be empty", result.stderr)
         self.assertEqual(FIXTURE.read_bytes(), self.original_fixture)
@@ -120,10 +128,7 @@ class ShowcaseTests(unittest.TestCase):
                     data["quiz"]["chapters"][0]["questions"][0][field] = value
                 altered = Path(temp) / f"{field}.json"
                 altered.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-                result = subprocess.run(
-                    [sys.executable, "-c", helper, str(ROOT), str(altered)],
-                    cwd=ROOT, capture_output=True, text=True, encoding="utf-8"
-                )
+                result = _run(sys.executable, "-c", helper, str(ROOT), str(altered))
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(field, result.stderr)
 
@@ -134,10 +139,7 @@ class ShowcaseTests(unittest.TestCase):
             "load_fixture(__import__('pathlib').Path(sys.argv[2]))"
         )
         missing = ROOT / "showcase" / "fixture" / "missing-course.json"
-        result = subprocess.run(
-            [sys.executable, "-c", helper, str(ROOT), str(missing)],
-            cwd=ROOT, capture_output=True, text=True, encoding="utf-8"
-        )
+        result = _run(sys.executable, "-c", helper, str(ROOT), str(missing))
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("fixture not found", result.stderr)
 
@@ -158,10 +160,7 @@ class ShowcaseTests(unittest.TestCase):
             for index, (expected, data) in enumerate(cases):
                 altered = Path(temp) / f"case-{index}.json"
                 altered.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-                result = subprocess.run(
-                    [sys.executable, "-c", helper, str(ROOT), str(altered)],
-                    cwd=ROOT, capture_output=True, text=True, encoding="utf-8"
-                )
+                result = _run(sys.executable, "-c", helper, str(ROOT), str(altered))
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected, result.stderr)
         self.assertEqual(FIXTURE.read_bytes(), self.original_fixture)
