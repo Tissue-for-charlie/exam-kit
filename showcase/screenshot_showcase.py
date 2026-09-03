@@ -30,11 +30,13 @@ BUILDER = ROOT / "showcase" / "build_showcase.py"
 OUTPUT = ROOT / "showcase" / "output"
 PREVIEW = ROOT / "showcase" / "preview"
 
-# (preview name, product file, click first option?, full-page capture?)
+# (preview name, product file, click first option?, viewport width, height)
+# Compact top-of-page captures so the README previews stay small. The quiz is a
+# single-screen app so it keeps more height; the graph hero + top of the map.
 TARGETS = (
-    ("outline", "outline.html", False, False),
-    ("quiz", "quiz.html", True, False),      # click first option (a correct one)
-    ("graph", "graph.html", False, True),    # whole-graph tall canvas
+    ("outline", "outline.html", False, 560, 660),
+    ("quiz", "quiz.html", True, 560, 820),   # click first option (a correct one)
+    ("graph", "graph.html", False, 600, 760),
 )
 
 
@@ -49,8 +51,8 @@ def build() -> None:
 def capture(browser) -> dict[str, int]:
     sizes: dict[str, int] = {}
     PREVIEW.mkdir(parents=True, exist_ok=True)
-    for name, fname, click, full_page in TARGETS:
-        viewport = {"width": 780, "height": 1000}
+    for name, fname, click, width, height in TARGETS:
+        viewport = {"width": width, "height": height}
         page = browser.new_page(viewport=viewport, device_scale_factor=1)
         try:
             page.goto((OUTPUT / fname).as_uri(), wait_until="load")
@@ -59,8 +61,7 @@ def capture(browser) -> dict[str, int]:
                 page.evaluate(
                     "document.querySelector('.options .option')?.click()")
                 page.wait_for_timeout(250)
-            page.screenshot(path=str(PREVIEW / f"{name}.png"),
-                            full_page=full_page)
+            page.screenshot(path=str(PREVIEW / f"{name}.png"))
             sizes[name] = (PREVIEW / f"{name}.png").stat().st_size
         finally:
             page.close()
