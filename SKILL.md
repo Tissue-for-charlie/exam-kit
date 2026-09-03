@@ -226,7 +226,6 @@ pip install python-pptx python-docx pypdf
 
 ## 不要做
 
-- 不要照抄参考技能 exampass 的整页 PPT 渲染对照栏、多 Agent 编排——本 Skill 已砍掉这些，保持轻量。
 - 不要对图片做 OCR——图片一律交给多模态模型直接读。
 - 不要把提纲写成长篇讲解——每条知识点 1-2 句话，能背即可。
 - 不要凭空编造原题出处——`original` 题必须真实存在于资料里，`source_ref` 必须真实。
