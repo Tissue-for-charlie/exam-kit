@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""finals-prepper Phase 4b: 渲染复习题 HTML（刷题 App 风 + 逐题提交 + 错题集 + 掌握度报告）。
+"""exam-kit Phase 4b: 渲染复习题 HTML（刷题 App 风 + 逐题提交 + 错题集 + 掌握度报告）。
 
 用法: python render_quiz.py <资料目录>
 读取 .final_prep/questions.json 和 knowledge_skeleton.json（拿 kc_id -> 标签映射）。

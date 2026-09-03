@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""finals-prepper Phase 4a: 渲染复习提纲 HTML（Claude 式杂志感 · 双栏布局）。
+"""exam-kit Phase 4a: 渲染复习提纲 HTML（Claude 式杂志感 · 双栏布局）。
 
 用法: python render_outline.py <资料目录>
 读取 .final_prep/knowledge_skeleton.json，输出 <课程名>-复习提纲.html。
@@ -809,7 +809,7 @@ def render_sidebar(skeleton: dict) -> str:
         f'</div>'
         f'</nav>'
     )
-    parts.append('<div class="sb-bottom">finals-prepper · 期末复习</div>')
+    parts.append('<div class="sb-bottom">exam-kit · 期末复习</div>')
     parts.append('<div class="sb-resize" title="拖动调整宽度"></div>')
     return "\n".join(parts)
 

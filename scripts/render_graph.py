@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""finals-prepper Phase 4c: 渲染交互式知识图谱 HTML（Claude 式杂志感）。
+"""exam-kit Phase 4c: 渲染交互式知识图谱 HTML（Claude 式杂志感）。
 
 用法: python render_graph.py <资料目录>
 读取 .final_prep/knowledge_skeleton.json，输出 <课程名>-知识图谱.html。

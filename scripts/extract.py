@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""finals-prepper Phase 1: 提取各章文件的文字，产出逐章 text bundle。
+"""exam-kit Phase 1: 提取各章文件的文字，产出逐章 text bundle。
 
 用法: python extract.py <资料目录>
 读取 .final_prep/manifest.json，对每章文件按类型提取文字；

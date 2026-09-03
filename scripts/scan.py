@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""finals-prepper Phase 0: 递归扫描资料目录，按章节自动分组，产出 manifest.json。
+"""exam-kit Phase 0: 递归扫描资料目录，按章节自动分组，产出 manifest.json。
 
 用法: python scan.py <资料目录>
 """

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "artifacts", "counts", "static_check", "browser_check"],
+  "properties": {
+    "version": {"type": "string", "const": "1"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "size_bytes", "sha256"],
+        "properties": {
+          "name": {"type": "string", "enum": ["outline.html", "quiz.html", "graph.html"]},
+          "size_bytes": {"type": "integer", "minimum": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      },
+      "contains": {
+        "type": "object",
+        "properties": {"name": {"const": "outline.html"}},
+        "required": ["name"]
+      },
+      "allOf": [
+        {"contains": {"type": "object", "properties": {"name": {"const": "quiz.html"}}, "required": ["name"]}},
+        {"contains": {"type": "object", "properties": {"name": {"const": "graph.html"}}, "required": ["name"]}}
+      ]
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chapters", "knowledge_points", "questions"],
+      "properties": {
+        "chapters": {"type": "integer", "minimum": 1},
+        "knowledge_points": {"type": "integer", "minimum": 1},
+        "questions": {"type": "integer", "minimum": 1}
+      }
+    },
+    "static_check": {"type": "string", "enum": ["passed"]},
+    "browser_check": {"type": "string", "enum": ["passed", "unavailable"]}
+  }
+}
