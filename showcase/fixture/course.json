@@ -19,7 +19,7 @@
           {
             "id": "ch1.kc2",
             "label": "主键与候选键",
-            "importance": "key",
+            "importance": "freq",
             "content": "**主键**唯一标识一行记录；候选键是满足唯一性要求的最小属性集合，建表时应选择稳定且简洁的键。",
             "deps": ["ch1.kc1"],
             "is_hub": false
@@ -88,7 +88,7 @@
           {
             "id": "ch2.kc5",
             "label": "事务边界",
-            "importance": "key",
+            "importance": "freq",
             "content": "**事务**把一组相关操作作为整体提交或回滚；COMMIT 和 ROLLBACK 应与业务不变量一起设计。",
             "deps": ["ch1.kc4"],
             "is_hub": true
