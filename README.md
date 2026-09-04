@@ -11,8 +11,6 @@
 | **复习题** | 逐题作答、自动批改、逐题解析、错题集、掌握度报告 | [![复习题预览](showcase/preview/quiz.png)](showcase/preview/quiz.png) |
 | **知识图谱** | 章节→知识点 + 依赖虚线 + 枢纽概念星标，拖拽缩放 | [![知识图谱预览](showcase/preview/graph.png)](showcase/preview/graph.png) |
 
-> 预览图来自仓库内公开的 **derived demo**（`showcase/fixture`），非任何真实课程。用 `python showcase/screenshot_showcase.py` 随时可重新生成。
-
 [![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](requirements.txt)
 [![check](https://github.com/Tissue-for-charlie/exam-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/Tissue-for-charlie/exam-kit/actions/workflows/verify.yml)
