@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """Regenerate the committed README preview images.
 
-Captures the three deterministic showcase HTML products into
-``showcase/preview/{outline,quiz,graph}.png`` so the GitHub README shows
-real results without linking to gitignored build output.
+Captures the three deterministic showcase HTML products at a desktop-viewport
+aspect into ``showcase/preview/{outline,quiz,graph}.png`` (full size), and
+writes small equal-ratio thumbnails ``*-thumb.png`` alongside. The README
+displays a thumbnail and links to the full-size image, so a click opens the
+real desktop-resolution screenshot.
 
 Requirements: a local Playwright plus a browser it can launch. The script
-prefers a system Chrome/Edge (channel="chrome" / "msedge"), then falls back
-to the Playwright-bundled Chromium. When no browser is usable it reports
+prefers a system Chrome/Edge (channel="chrome" / "msedge"), then falls back to
+the Playwright-bundled Chromium. When no browser is usable it reports
 ``unavailable`` and exits 0, leaving any existing previews untouched, so CI
-and fresh clones are never blocked.
+and fresh clones are never blocked. Thumbnailing uses Pillow; when Pillow is
+missing the full-size captures are still produced and the thumb step is
+skipped with a note.
 
-The capture is deterministic for a given fixture and renderer: fixed
+The capture is deterministic for a given fixture and renderer: fixed desktop
 viewport, no animations to wait on, and the quiz preview clicks the first
 option of question 1 (a correct choice) to show auto-grading plus the
 explanation panel.
@@ -31,13 +35,16 @@ OUTPUT = ROOT / "showcase" / "output"
 PREVIEW = ROOT / "showcase" / "preview"
 
 # (preview name, product file, click first option?, viewport width, height)
-# Compact top-of-page captures so the README previews stay small. The quiz is a
-# single-screen app so it keeps more height; the graph hero + top of the map.
+# One desktop window per product; the two-column outline, the single-screen
+# quiz app, and the graph hero each get enough room to read as themselves.
 TARGETS = (
-    ("outline", "outline.html", False, 560, 660),
-    ("quiz", "quiz.html", True, 560, 820),   # click first option (a correct one)
-    ("graph", "graph.html", False, 600, 760),
+    ("outline", "outline.html", False, 1280, 820),
+    ("quiz", "quiz.html", True, 1280, 920),  # click first option (a correct one)
+    ("graph", "graph.html", False, 1280, 880),
 )
+
+# Display width of the README thumbnails; full-size images keep their own px.
+THUMB_WIDTH = 340
 
 
 def build() -> None:
@@ -52,8 +59,8 @@ def capture(browser) -> dict[str, int]:
     sizes: dict[str, int] = {}
     PREVIEW.mkdir(parents=True, exist_ok=True)
     for name, fname, click, width, height in TARGETS:
-        viewport = {"width": width, "height": height}
-        page = browser.new_page(viewport=viewport, device_scale_factor=1)
+        page = browser.new_page(viewport={"width": width, "height": height},
+                                device_scale_factor=1)
         try:
             page.goto((OUTPUT / fname).as_uri(), wait_until="load")
             page.wait_for_timeout(400)
@@ -66,6 +73,26 @@ def capture(browser) -> dict[str, int]:
         finally:
             page.close()
     return sizes
+
+
+def make_thumbnails(sizes: dict[str, int]) -> dict[str, int]:
+    """Downscale each full capture to a small README thumbnail (Pillow)."""
+    try:
+        from PIL import Image
+    except ImportError:
+        print("  thumbnails: skipped (Pillow not installed)")
+        return {}
+    thumbs: dict[str, int] = {}
+    for name in sizes:
+        src = PREVIEW / f"{name}.png"
+        im = Image.open(src)
+        ratio = THUMB_WIDTH / im.width
+        im = im.resize((THUMB_WIDTH, max(1, round(im.height * ratio))),
+                       Image.LANCZOS)
+        out = PREVIEW / f"{name}-thumb.png"
+        im.save(out)
+        thumbs[name] = out.stat().st_size
+    return thumbs
 
 
 def main() -> int:
@@ -93,8 +120,10 @@ def main() -> int:
             sizes = capture(browser)
         finally:
             browser.close()
+    thumbs = make_thumbnails(sizes)
     for name, size in sizes.items():
-        print(f"  preview/{name}.png ({size} bytes)")
+        note = f"  thumb {thumbs[name]} bytes" if name in thumbs else "  no thumb"
+        print(f"  preview/{name}.png ({size} bytes), {note}")
     print("preview: regenerated")
     return 0
 

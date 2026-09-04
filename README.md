@@ -7,9 +7,11 @@
 
 | 产物 | 你拿它做什么 | 预览 |
 |---|---|---|
-| **复习提纲** | 按章背诵，知识点打四色重要度标签，章末折叠自测 | [![复习提纲预览](showcase/preview/outline.png)](showcase/preview/outline.png) |
-| **复习题** | 逐题作答、自动批改、逐题解析、错题集、掌握度报告 | [![复习题预览](showcase/preview/quiz.png)](showcase/preview/quiz.png) |
-| **知识图谱** | 章节→知识点 + 依赖虚线 + 枢纽概念星标，拖拽缩放 | [![知识图谱预览](showcase/preview/graph.png)](showcase/preview/graph.png) |
+| **复习提纲** | 按章背诵，知识点打四色重要度标签，章末折叠自测 | [![复习提纲预览](showcase/preview/outline-thumb.png)](showcase/preview/outline.png) |
+| **复习题** | 逐题作答、自动批改、逐题解析、错题集、掌握度报告 | [![复习题预览](showcase/preview/quiz-thumb.png)](showcase/preview/quiz.png) |
+| **知识图谱** | 章节→知识点 + 依赖虚线 + 枢纽概念星标，拖拽缩放 | [![知识图谱预览](showcase/preview/graph-thumb.png)](showcase/preview/graph.png) |
+
+<sub>缩略图为桌面视图小图；点击任一张可查看全尺寸截图。</sub>
 
 [![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](requirements.txt)
