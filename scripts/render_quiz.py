@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""exam-kit Phase 4b: 渲染复习题 HTML（刷题 App 风 + 逐题提交 + 错题集 + 掌握度报告）。
+"""exam-kit Phase 4b: 渲染复习题 HTML（刷题 App 风 + 逐题提交 + 错题本 + 掌握度报告）。
 
 用法: python render_quiz.py <资料目录>
-读取 .final_prep/questions.json 和 knowledge_skeleton.json（拿 kc_id -> 标签映射）。
+读取 .final_prep/questions.json 和 knowledge_skeleton.json（拿 kc_id / chapter id -> 标签映射，
+questions.json 里缺 label 的章节按 id 从 skeleton 补齐，章节 tab 显示真实章节名）。
 输出 <课程名>-复习题.html。
 
 交互形态：
 - 顶部深色 header + 统计条 + 进度条 + 题型/章节 tab + 模式选择（顺序/随机）。
 - 单题视图，底部固定栏「上一题 / 提交 / 下一题」逐题作答。
 - 客观题提交即判对错、标解析与易错点；主观题一键查看参考答案。
-- 做错的题自动进「错题集」，可单独重刷。
+- 做错的题自动进「错题本」，可单独重刷。
 - 「掌握度报告」按知识点聚合得分率，标出薄弱点。
 - 打印时全部题目 + 答案 + 解析展开（Ctrl+P 导出完整题集）。
 """
@@ -24,20 +25,20 @@ TYPE_NAMES = {
     "multi": "多选题",
     "tf": "判断题",
     "fill": "填空题",
-    "short": "简答题",
-    "calc": "计算题",
-    "essay": "论述题",
+    "short": "主观题",
+    "calc": "主观题",
+    "essay": "主观题",
 }
 SUBJECTIVE = {"short", "calc", "essay"}
-# 题型标签配色类
+# 题型标签配色类（主观题统一一种）
 TYPE_TAG_CLS = {
     "choice": "tag-choice",
     "multi": "tag-multi",
     "tf": "tag-tf",
     "fill": "tag-fill",
-    "short": "tag-short",
-    "calc": "tag-calc",
-    "essay": "tag-essay",
+    "short": "tag-subj",
+    "calc": "tag-subj",
+    "essay": "tag-subj",
 }
 DIFF = {"easy": "易", "medium": "中", "hard": "难"}
 DIFF_CLS = {"easy": "tag-easy", "medium": "tag-medium", "hard": "tag-hard"}
@@ -72,8 +73,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
   color: #fff; padding: 14px 20px 12px; position: sticky; top: 0; z-index: 100;
   box-shadow: 0 2px 12px rgba(0,0,0,.15);
 }
-.header-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.header-titles { min-width: 0; }
+.header-inner { display: flex; align-items: flex-start; justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+.header-titles { min-width: 0; flex: 1 1 auto; }
 .header h1 { font-size: 20px; font-weight: 700; line-height: 1.3; }
 .header .sub { font-size: 12px; opacity: .72; margin-top: 2px; }
 .toggle-top-btn {
@@ -85,9 +86,24 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .toggle-top-btn:hover { background: rgba(255,255,255,.25); }
 .toggle-top-btn.collapsed { transform: rotate(180deg); }
 
+/* 顶栏右侧按钮：去AI / 掌握度报告（与三角形按钮同一水平线） */
+.top-btn {
+  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.28); color: #fff;
+  border-radius: 6px; padding: 4px 11px; cursor: pointer; font-size: 13px; line-height: 1.4;
+  margin-top: 2px; touch-action: manipulation; flex-shrink: 0;
+  transition: background .2s ease, color .2s ease, transform .15s ease;
+}
+.top-btn:hover { background: rgba(255,255,255,.26); }
+.top-btn:active { transform: scale(.96); }
+.top-btn.active { background: #fff; color: #16213e; border-color: #fff; font-weight: 700; }
+.top-btn:disabled { opacity: .45; cursor: not-allowed; background: rgba(255,255,255,.08); }
+
 /* 顶部可折叠栏（统计条 + 进度 + tab + 模式） */
 #topBars { overflow: hidden; transition: max-height .35s ease, opacity .3s ease; max-height: 400px; opacity: 1; }
 #topBars.hidden { max-height: 0; opacity: 0; }
+
+/* 极速刷题：整个顶部控制区（header+统计/tab/模式）常驻吸顶 */
+body.fast .quiz-top { position: sticky; top: 0; z-index: 120; background: #fff; }
 
 /* ── 统计条 ── */
 .stat-bar { display: flex; gap: 18px; padding: 10px 20px; background: #fff; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -103,7 +119,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .progress i { display: block; height: 100%; width: 0; background: var(--correct); transition: width .3s ease; }
 
 /* ── Tab 导航 ── */
-.nav { background: #fff; padding: 8px 12px; border-bottom: 1px solid var(--line); overflow-x: auto; white-space: nowrap; display: flex; gap: 6px; }
+.nav { background: #fff; padding: 8px 12px; border-bottom: 1px solid var(--line); overflow-x: auto; white-space: nowrap; display: flex; gap: 6px; scrollbar-width: none; -ms-overflow-style: none; }
+/* Tab 行滚动条全隐藏（滚轮可横向滚动，不显示可见条） */
 .nav::-webkit-scrollbar { display: none; }
 .nav button {
   flex-shrink: 0; padding: 5px 14px; border: 1px solid #ddd; border-radius: 16px;
@@ -133,6 +150,10 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 }
 .quiz-list .q-card { display: none; }
 .quiz-list .q-card.active { display: block; }
+/* 极速刷题：整页滚动列出，全部可见、就地作答 */
+.quiz-list .q-card.fastShow { display: block; }
+body.fast .nav-fixed { display: none; }
+body.fast .main { padding-bottom: 46px; }
 
 .q-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .q-num { font-size: 13px; color: #999; font-weight: 600; }
@@ -146,6 +167,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .tag-short { background: #f6ffed; color: #52c41a; }
 .tag-calc { background: #fff7e6; color: #fa8c16; }
 .tag-essay { background: #fff1f0; color: #f5222d; }
+.tag-subj { background: #e8f5e9; color: #2e7d32; }
 .tag-easy { background: #f6ffed; color: #52c41a; }
 .tag-medium { background: #fff7e6; color: #fa8c16; }
 .tag-hard { background: #fff1f0; color: #f5222d; }
@@ -186,8 +208,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 /* 填空 */
 .fill-wrap { display: flex; flex-direction: column; gap: 8px; }
 .fill-input {
-  width: 100%; padding: 10px 14px; border: 2px solid var(--line); border-radius: 8px;
-  font-size: 15px; outline: none; transition: border-color .15s; background: #fff;
+  width: 100%; padding: 5px 12px; border: 2px solid var(--line); border-radius: 8px;
+  font-size: 15px; line-height: 1.4; outline: none; transition: border-color .15s; background: #fff;
 }
 .fill-input:focus { border-color: var(--accent); }
 .fill-input.correct { border-color: var(--correct); background: #f6ffed; }
@@ -284,12 +306,32 @@ table.kc th { background: #fafafa; }
   .tf-group { gap: 8px; }
   .nav-fixed { padding: 8px 10px; }
   .nav-fixed .nav-inner { gap: 6px; }
-  .nav-fixed .btn { min-width: 58px; padding: 8px 6px; font-size: 13px; }
+  .nav-fixed .btn { min-width: 88px; padding: 10px 8px; font-size: 13.5px; }
   .nav-fixed .nav-info { font-size: 11px; }
   .report-overlay { padding: 10px; }
   .report-card { max-height: 90vh; border-radius: 14px; }
   .report-head { padding: 14px 16px; }
   .report-body { padding: 12px 14px 18px; }
+  /* 输入框字号 ≥16 防 iOS 自动缩放；不超容器宽、页面不横向溢出 */
+  .fill-input, .subj-input { font-size: 16px; max-width: 100%; }
+  body { overflow-x: hidden; }
+}
+
+/* ── 手机 + 小平板（481–640px）保守适配：顶栏/统计紧凑、输入防缩放、不溢出；
+      题型/章节 tab 与选项的尺寸一律不动（桌面 >640 也不受影响） ── */
+@media (min-width: 481px) and (max-width: 640px) {
+  .header { padding: 12px 16px 10px; }
+  .header h1 { font-size: 18px; }
+  .header .sub { font-size: 11.5px; }
+  .stat-bar { gap: 14px; padding: 8px 14px; }
+  .mode-bar { padding: 7px 14px; }
+  .main { padding: 14px 12px 96px; }
+  .fill-input, .subj-input { font-size: 16px; max-width: 100%; }
+  .subj-input { min-height: 116px; }
+  .answer-static { font-size: 14px; }
+  .report-card { max-height: 92vh; }
+  body { overflow-x: hidden; }
+  .nav-fixed .btn { min-width: 88px; padding: 10px 8px; font-size: 13.5px; }
 }
 
 /* ── 打印：全部题目 + 答案展开 ── */
@@ -303,6 +345,15 @@ table.kc th { background: #fafafa; }
   .option.disabled, .option { pointer-events: none; }
 }
 """
+
+
+def _fill_blank_width(ans: str) -> float:
+    """填空输入框宽度：按答案长短估算（中文≈17px/字、英文≈9px/字），
+    并比答案明显长一截留出输入余量；84–360px 区间。"""
+    if not ans:
+        return 150.0
+    px = sum(17 if ord(c) > 0x2E80 else 9 for c in ans)
+    return max(84.0, min(360.0, px + 58.0))
 
 
 def _fmt_answer(q):
@@ -375,11 +426,17 @@ def _render_question(q, gid):
                      f'<div class="option" data-val="false"><span class="opt-key">✗</span><span>错误</span></div>'
                      f'</div>')
     elif t == "fill":
+        ans_list = q.get("answer") or []
+        if isinstance(ans_list, str):
+            ans_list = [ans_list]
         idx = [0]
         def repl(m):
             i = idx[0]
             idx[0] += 1
-            return f'<input class="fill-input" data-blank="{i}" data-q="{qid}" autocomplete="off">'
+            a = ans_list[i] if i < len(ans_list) else ""
+            w = _fill_blank_width(a)
+            return (f'<input class="fill-input" style="width:{w:.0f}px" '
+                    f'data-blank="{i}" data-q="{qid}" autocomplete="off">')
         qtext = re.sub(r"_{3,}", repl, qtext)
         lines.append(f'<div class="fill-wrap"><div class="q-stem">{qtext}</div></div>')
 
@@ -388,7 +445,7 @@ def _render_question(q, gid):
         lines.append(f'<div class="q-stem">{qtext}</div>')
         lines.append('<textarea class="subj-input" placeholder="在此输入你的答案……"></textarea>')
         lines.append('<div class="q-actions">'
-                     f'<button class="btn btn-primary" onclick="submitCurrent()">提交答案</button>'
+                     f'<button class="btn btn-primary" onclick="submitCardFrom(this)">提交答案</button>'
                      '</div>')
     elif t in ("choice", "tf"):
         lines.append('<div class="q-actions">'
@@ -396,7 +453,7 @@ def _render_question(q, gid):
                      '</div>')
     else:
         lines.append('<div class="q-actions">'
-                     f'<button class="btn btn-primary" onclick="submitCurrent()">提交答案</button>'
+                     f'<button class="btn btn-primary" onclick="submitCardFrom(this)">提交答案</button>'
                      '</div>')
 
     # 判分结果条
@@ -421,32 +478,38 @@ def render(quiz: dict) -> str:
                 total_obj += 1
             type_counts[q["type"]] = type_counts.get(q["type"], 0) + 1
 
-    # 题型 tab：全部 + 实际存在的客观题型 + 主观（若有）。错题/未答走顶部「刷题模式」。
-    type_order = ["choice", "multi", "tf", "fill"]
+    # 题型 tab：固定顺序始终出现 全部/单选/多选/判断/填空/主观题/客观题（0 道也占位，避免课程间 tab 飘忽）
     type_tabs = ['<button class="active" data-type="all" onclick="setType(this)">全部'
                  f'<span class="cnt">{sum(type_counts.values())}</span></button>']
-    for tt in type_order:
-        if tt in type_counts:
-            type_tabs.append(f'<button data-type="{tt}" onclick="setType(this)">{TYPE_NAMES[tt]}'
-                             f'<span class="cnt">{type_counts[tt]}</span></button>')
-    if any(t in SUBJECTIVE for t in type_counts):
-        subj_n = sum(type_counts[t] for t in type_counts if t in SUBJECTIVE)
+    for tt, label in (("choice", "单选题"), ("multi", "多选题"), ("tf", "判断题"), ("fill", "填空题")):
+        n = type_counts.get(tt, 0)
+        type_tabs.append(f'<button data-type="{tt}" onclick="setType(this)">{label}'
+                         f'<span class="cnt">{n}</span></button>')
+    subj_n = sum(type_counts[t] for t in type_counts if t in SUBJECTIVE)
+    type_tabs.append(f'<button data-type="obj" onclick="setType(this)">客观题'
+                     f'<span class="cnt">{total_obj}</span></button>')
+    if subj_n:
         type_tabs.append(f'<button data-type="subj" onclick="setType(this)">主观题'
                          f'<span class="cnt">{subj_n}</span></button>')
 
-    # 章节 tab
+    # 章节 tab。questions.json 的 chapter 可能只带 id（如 ch1）没带 label，
+    # 此时按 id 从 knowledge_skeleton.json 的 chapterMap 补齐真实章节名。
+    chap_map = quiz.get("chapterMap") or {}
     chapter_tabs = ['<button class="active" data-chapter="all" onclick="setChapter(this)">全部章节</button>']
     for ch in chapters:
-        label = ch.get("label") or ch["id"]
+        label = ch.get("label") or chap_map.get(ch["id"]) or ch["id"]
         chapter_tabs.append(f'<button data-chapter="{ch["id"]}" onclick="setChapter(this)">{html.escape(label)}</button>')
 
     parts = [
+        '<div class="quiz-top">',
         '<div class="header">'
         '<div class="header-inner">'
         '<div class="header-titles">'
         f'<h1>{html.escape(course)} · 复习题</h1>'
-        f'<div class="sub">共 {sum(type_counts.values())} 题 · 逐题作答 · 错题自动进错题集</div>'
+        f'<div class="sub">共 {sum(type_counts.values())} 题 · 逐题作答 · 错题自动进错题本</div>'
         '</div>'
+        '<button class="top-btn" id="aiBtn" type="button" onclick="toggleAi()" title="隐藏/恢复 AI 生成题">去AI</button>'
+        '<button class="top-btn" type="button" onclick="openReport()">掌握度报告</button>'
         '<button class="toggle-top-btn" id="toggleTopBtn" onclick="toggleTopBars()" title="显示/隐藏顶部栏" aria-label="显示/隐藏顶部栏">▲</button>'
         '</div>'
         '</div>',
@@ -463,11 +526,12 @@ def render(quiz: dict) -> str:
         '<div class="mode-bar">'
         '<span class="mode-label">刷题模式：</span>'
         '<button class="mode-btn active" data-mode="all" onclick="setMode(this)">全部题目</button>'
-        '<button class="mode-btn" data-mode="wrong" onclick="setMode(this)">仅错题<span class="cnt" id="wrongCnt">0</span></button>'
-        '<button class="mode-btn" data-mode="unanswered" onclick="setMode(this)">仅未答</button>'
         '<button class="mode-btn" data-mode="random" onclick="setMode(this)">随机顺序</button>'
-        '<span class="spacer"></span>'
-        '<button class="link-btn" onclick="openReport()">📊 掌握度报告</button>'
+        '<button class="mode-btn" data-mode="fast" onclick="setMode(this)">极速刷题</button>'
+        '<button class="mode-btn" data-mode="unanswered" onclick="setMode(this)">未作答</button>'
+        '<button class="mode-btn" data-mode="wrong" onclick="setMode(this)">错题本<span class="cnt" id="wrongCnt">0</span></button>'
+        '<button class="mode-btn" id="exportWrongBtn" onclick="exportWrong()">导出错题</button>'
+        '</div>',
         '</div>',
         '</div>',
         '<div class="main">',
@@ -509,7 +573,7 @@ def render(quiz: dict) -> str:
 
 QUIZ_JS = r"""
 var QUIZ = __QUIZ_JSON__;
-var TYPE_NAMES = {choice:'单选题',multi:'多选题',tf:'判断题',fill:'填空题',short:'简答题',calc:'计算题',essay:'论述题'};
+var TYPE_NAMES = {choice:'单选题',multi:'多选题',tf:'判断题',fill:'填空题',short:'主观题',calc:'主观题',essay:'主观题'};
 var SUBJ = {short:1,calc:1,essay:1};
 var DIFF = {easy:'易',medium:'中',hard:'难'};
 
@@ -519,12 +583,48 @@ var submitted = {};    // qid -> true（已提交）
 var results = {};      // qid -> true（答对）
 var state = {type:'all', chapter:'all', mode:'all', idx:0};
 var curList = [];      // 当前过滤后的列表
+var aiHide = false;    // 去AI：隐藏 AI 生成题
+
+// 当前可用题池：去AI 时剔除 source==='generated'
+function aiPool(){
+  return aiHide ? ALL.filter(function(q){ return (q.source||'') !== 'generated'; }) : ALL;
+}
+function toggleAi(){
+  aiHide = !aiHide;
+  paintAi();
+  state.idx = 0;
+  refresh();
+  refreshTabCounts();
+}
+function refreshTabCounts(){
+  var P = aiPool();
+  var byType = {};
+  P.forEach(function(q){ byType[q.type]=(byType[q.type]||0)+1; });
+  function cnt(fn){ var n=0; P.forEach(function(q){ if(fn(q)) n++; }); return n; }
+  document.querySelectorAll('.nav:not(.chapter-nav) button').forEach(function(b){
+    var el=b.querySelector('.cnt'); if(!el) return;
+    var t=b.dataset.type;
+    if(t==='all') el.textContent = P.length;
+    else if(t==='subj') el.textContent = cnt(function(q){ return SUBJ[q.type]; });
+    else if(t==='obj') el.textContent = cnt(function(q){ return !SUBJ[q.type]; });
+    else el.textContent = byType[t]||0;
+  });
+}
+function paintAi(){
+  var btn = document.getElementById('aiBtn');
+  if(!btn) return;
+  var genN = ALL.reduce(function(n,q){ return n + ((q.source||'')==='generated' ? 1 : 0); }, 0);
+  btn.disabled = genN === 0;
+  if(genN === 0){ btn.classList.remove('active'); btn.textContent = '无AI题'; }
+  else { btn.classList.toggle('active', aiHide); btn.textContent = aiHide ? '已去AI' : '去AI'; }
+}
 
 function flatten(){
   var gid = 0;
+  var chapMap = QUIZ.chapterMap || {};
   QUIZ.chapters.forEach(function(ch){
     (ch.questions||[]).forEach(function(q){
-      ALL.push(Object.assign({}, q, {chapterId:ch.id, chapterLabel:ch.label||ch.id, gid:++gid}));
+      ALL.push(Object.assign({}, q, {chapterId:ch.id, chapterLabel:ch.label || chapMap[ch.id] || ch.id, gid:++gid}));
     });
   });
 }
@@ -533,7 +633,8 @@ function shuffle(a){
   return a;
 }
 function rebuildList(){
-  var L = ALL.filter(function(q){
+  var L = aiPool().filter(function(q){
+    if(state.type==='obj') return !SUBJ[q.type];          // 客观题
     if(state.type==='subj') return !!SUBJ[q.type];
     if(state.type!=='all' && q.type!==state.type) return false;
     if(state.chapter!=='all' && q.chapterId!==state.chapter) return false;
@@ -563,21 +664,98 @@ function setType(btn){
   btn.classList.add('active');
   state.type = btn.dataset.type;
   state.idx = 0;
-  rebuildList(); renderCurrent(); updateStats();
+  refresh();
 }
 function setChapter(btn){
   document.querySelectorAll('.chapter-nav button').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   state.chapter = btn.dataset.chapter;
   state.idx = 0;
-  rebuildList(); renderCurrent(); updateStats();
+  refresh();
 }
 function setMode(btn){
   document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   state.mode = btn.dataset.mode;
   state.idx = 0;
-  rebuildList(); renderCurrent(); updateStats();
+  if(state.mode==='fast'){ renderFast(); }
+  else { leaveFast(); rebuildList(); renderCurrent(); updateStats(); }
+}
+
+// ── 极速刷题：整页滚动列出当前筛选的题，就地作答，不用点“下一题” ──
+function renderFast(){
+  document.body.classList.add('fast');
+  var list = document.getElementById('quizList');
+  if(list) list.classList.add('mode-fast');
+  document.querySelectorAll('.q-card').forEach(function(c){
+    c.classList.remove('active'); c.classList.remove('fastShow');
+  });
+  var L = [];
+  aiPool().forEach(function(q){
+    var hit = true;
+    if(state.type==='obj'){ if(SUBJ[q.type]) hit = false; }
+    else if(state.type==='subj' && !SUBJ[q.type]) hit = false;
+    else if(state.type!=='all' && q.type!==state.type) hit = false;
+    if(state.chapter!=='all' && q.chapterId!==state.chapter) hit = false;
+    if(hit){ L.push(q); var c=qCard(q); if(c) c.classList.add('fastShow'); }
+  });
+  var empty = document.getElementById('empty');
+  if(empty){
+    empty.style.display = L.length ? 'none' : 'block';
+    if(!L.length) empty.innerHTML = '当前筛选下没有题目';
+  }
+  updateStats();
+}
+function leaveFast(){
+  document.body.classList.remove('fast');
+  var list = document.getElementById('quizList');
+  if(list) list.classList.remove('mode-fast');
+  document.querySelectorAll('.q-card').forEach(function(c){ c.classList.remove('fastShow'); });
+}
+function refresh(){
+  if(state.mode==='fast'){ renderFast(); }
+  else { rebuildList(); renderCurrent(); updateStats(); }
+}
+
+// ── 导出错题：把当前错题本（受去AI影响）生成一份自包含 HTML 下载 ──
+function exportWrong(){
+  var items = [];
+  aiPool().forEach(function(q){ if(wrongSet[q.id]) items.push(q); });
+  if(!items.length){ alert('当前没有可导出的错题'); return; }
+  var styles = Array.prototype.map.call(document.querySelectorAll('style'), function(s){return s.textContent;}).join('\n');
+  var extra = '\n.quiz-top,#topBars,.mode-bar,.nav-fixed,.report-overlay,.backtop{display:none !important;}\n'
+    + '.main{max-width:860px;margin:0 auto;padding:20px 16px 60px;}\n'
+    + '.quiz-list .q-card{display:block !important;}\n'
+    + '.q-card{box-shadow:none;border:1px solid #ddd;break-inside:avoid;}\n'
+    + '.q-actions,.q-result,.auto-hint{display:none !important;}\n'
+    + '.answer-static{display:block !important;}\n'
+    + '.option,.fill-input{pointer-events:none !important;}\n'
+    + '.fill-input{background:#fafafa;}\n'
+    + '.header{position:static;}\n';
+  var now = new Date();
+  var when = now.getFullYear()+'-'+('0'+(now.getMonth()+1)).slice(-2)+'-'+('0'+now.getDate()).slice(-2);
+  var cards = items.map(function(q){
+    var c = qCard(q); if(!c) return '';
+    var cl = c.cloneNode(true);
+    cl.classList.remove('active','fastShow');
+    Array.prototype.slice.call(cl.querySelectorAll('.q-actions,.q-result')).forEach(function(n){ if(n.parentNode) n.parentNode.removeChild(n); });
+    var as = cl.querySelector('.answer-static'); if(as) as.classList.add('show');
+    Array.prototype.slice.call(cl.querySelectorAll('.fill-input')).forEach(function(inp){ inp.disabled = true; });
+    return cl.outerHTML;
+  }).join('\n');
+  var name = (QUIZ.course||'复习题');
+  var hdr = '<div class="header"><div class="header-inner"><div class="header-titles">'
+    + '<h1>'+name+' · 错题本</h1>'
+    + '<div class="sub">共 '+items.length+' 道错题 · 导出日期 '+when+' · 本文件仅含错题，可离线打开或打印</div>'
+    + '</div></div></div>';
+  var html = '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1">'
+    + '<title>'+name+'-错题</title><style>'+styles+extra+'</style></head>'
+    + '<body><div class="main">'+hdr+cards+'</div></body></html>';
+  var href = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+  var a = document.createElement('a');
+  a.href = href; a.download = name + '-错题.html';
+  document.body.appendChild(a); a.click(); a.remove();
 }
 
 function renderCurrent(){
@@ -667,10 +845,12 @@ function highlight(card, q){
   }
 }
 
-function submitCurrent(){
-  var q = curQ();
+function submitCard(card){
+  if(!card) return;
+  var qid = card.getAttribute('data-qid');
+  var q = null;
+  for(var i=0;i<ALL.length;i++){ if(ALL[i].id===qid){ q=ALL[i]; break; } }
   if(!q) return;
-  var card = qCard(q);
   // 主观题：标记已作答并展示参考答案，自行对照（不自动判分）
   if(SUBJ[q.type]){
     submitted[q.id] = true;
@@ -698,15 +878,24 @@ function submitCurrent(){
   res.className = 'q-result ' + (correct?'ok':'bad');
   card.querySelector('.answer-static').classList.add('show');
   updateStats();
-  // 若在「仅错题」模式且已改对，列表变化需刷新
+  // 若在「错题本」模式且已改对，列表变化需刷新
   if(state.mode==='wrong' && correct && wasWrong){ rebuildList(); renderCurrent(); }
+}
+function submitCardFrom(btn){
+  var card = btn.closest('.q-card');
+  if(card) submitCard(card);
+}
+function submitCurrent(){
+  var q = curQ();
+  var card = qCard(q);
+  if(card) submitCard(card);
 }
 
 function updateStats(){
   var done=0, right=0, wrong=0, objTotal=0;
-  ALL.forEach(function(q){ if(!SUBJ[q.type]) objTotal++; });
-  ALL.forEach(function(q){
+  aiPool().forEach(function(q){
     if(SUBJ[q.type]) return;   // 主观题不计入客观题统计
+    objTotal++;
     if(!submitted[q.id]) return;
     done++; if(results[q.id]) right++; else wrong++;
   });
@@ -714,7 +903,7 @@ function updateStats(){
   document.getElementById('statRight').textContent = right;
   document.getElementById('statWrong').textContent = wrong;
   document.getElementById('statRate').textContent = done?Math.round(right/done*100)+'%':'0%';
-  document.getElementById('wrongCnt').textContent = Object.keys(wrongSet).length;
+  document.getElementById('wrongCnt').textContent = wrong;
   var pct = objTotal?Math.round(done/objTotal*100):0;
   document.getElementById('progressFill').style.width = pct + '%';
 }
@@ -782,7 +971,7 @@ document.addEventListener('click', function(e){
   }
   // 单选/判断：选中即自动判分（无需点提交）
   if(type === 'choice' || type === 'tf'){
-    submitCurrent();
+    submitCard(card);
   }
 });
 
@@ -795,8 +984,33 @@ document.addEventListener('keydown', function(e){
   if(e.key === 'Escape') closeReport();
 });
 
+// 键盘切题：←/↑ 上一题，→/↓ 下一题，Enter 下一题（输入框内/报告弹窗/极速刷题时不触发）
+document.addEventListener('keydown', function(e){
+  var t = e.target;
+  var tag = t && t.tagName ? t.tagName.toUpperCase() : '';
+  if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
+  if(state.mode==='fast') return;
+  var rp = document.getElementById('reportOverlay');
+  if(rp && rp.classList.contains('show')) return;
+  if(e.key==='ArrowLeft' || e.key==='ArrowUp'){ e.preventDefault(); move(-1); }
+  else if(e.key==='ArrowRight' || e.key==='ArrowDown'){ e.preventDefault(); move(1); }
+  else if(e.key==='Enter'){ e.preventDefault(); move(1); }
+});
+
+// ── Tab 行：鼠标竖滚轮 → 转成横向滚动（章节名太多放不下时能滚到）──
+document.querySelectorAll('.nav').forEach(function(nav){
+  nav.addEventListener('wheel', function(e){
+    if(e.ctrlKey) return;                            // Ctrl+滚轮=页面缩放，不劫持
+    if(nav.scrollWidth <= nav.clientWidth + 1) return; // 没有横向溢出就交还页面正常滚动
+    e.preventDefault();
+    nav.scrollLeft += (e.deltaY || e.deltaX);
+  }, {passive:false});
+});
+
 // 初始化
 flatten();
+paintAi();
+refreshTabCounts();
 rebuildList();
 renderCurrent();
 updateStats();
@@ -813,15 +1027,20 @@ def main():
     with open(os.path.join(fp, "questions.json"), encoding="utf-8") as f:
         quiz = json.load(f)
 
-    # kc_id -> label 映射
+    # kc_id / chapter id -> label 映射（都来自 knowledge_skeleton.json）。
+    # questions.json 的章节/知识点可能缺 label，按 id 从 skeleton 补齐，
+    # 让章节 tab、每题的 chapterLabel、掌握度报告都能显示真实名称。
     kc_map = {}
+    chapter_map = {}
     sk_path = os.path.join(fp, "knowledge_skeleton.json")
     if os.path.exists(sk_path):
         with open(sk_path, encoding="utf-8") as f:
             sk = json.load(f)
         for ch in sk.get("chapters", []):
+            chapter_map[ch["id"]] = ch.get("label", ch["id"])
             for kc in ch.get("kcs", []):
                 kc_map[kc["id"]] = kc.get("label", kc["id"])
+    quiz["chapterMap"] = chapter_map
     quiz["kcMap"] = kc_map
 
     body = render(quiz)

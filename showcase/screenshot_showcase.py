@@ -75,6 +75,58 @@ def capture(browser) -> dict[str, int]:
     return sizes
 
 
+def capture_export_wrong(browser) -> dict[str, int]:
+    """答错一道题后点「导出错题」，把导出的离线 HTML 也截成一张预览。"""
+    sizes: dict[str, int] = {}
+    page = browser.new_page(viewport={"width": 1280, "height": 920},
+                            accept_downloads=True, device_scale_factor=1)
+    try:
+        page.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+        page.wait_for_timeout(350)
+        # 进入极速刷题，给第一道单选题答一个错误选项
+        pick = page.evaluate("""() => {
+            document.querySelector(".mode-btn[data-mode='fast']")?.click();
+            return new Promise(function(res){ setTimeout(function(){
+                var card = document.querySelector(".q-card.fastShow[data-type='choice']");
+                if(!card){ res(null); return; }
+                var qid = card.getAttribute('data-qid');
+                var m = {}; QUIZ.chapters.forEach(function(ch){ (ch.questions||[]).forEach(function(q){ m[q.id]=q; }); });
+                var q = m[qid];
+                var opts = card.querySelectorAll('.option');
+                var wrong = (q.answer + 1) % opts.length;
+                opts[wrong].click();
+                res({qid:qid, n:opts.length});
+            }, 120); });
+        }""")
+        page.wait_for_timeout(250)
+        if pick is None:
+            print("  wrong-export: skipped (no choice found)")
+            return sizes
+        # 点「导出错题」并把下载的文件落到 showcase/output/wrong-quiz.html
+        out = OUTPUT / "wrong-quiz.html"
+        with page.expect_download() as dl:
+            page.evaluate("document.getElementById('exportWrongBtn')?.click()")
+        dl.value.save_as(str(out))
+        page.close()
+
+        view = browser.new_page(viewport={"width": 1280, "height": 920},
+                                device_scale_factor=1)
+        try:
+            view.goto(out.as_uri(), wait_until="load")
+            view.wait_for_timeout(300)
+            view.screenshot(path=str(PREVIEW / "wrong.png"))
+            sizes["wrong"] = (PREVIEW / "wrong.png").stat().st_size
+        finally:
+            view.close()
+    except Exception as exc:  # noqa: BLE001 — preview must never break CI
+        print(f"  wrong-export: skipped ({exc})")
+        try:
+            page.close()
+        except Exception:
+            pass
+    return sizes
+
+
 def make_thumbnails(sizes: dict[str, int]) -> dict[str, int]:
     """Downscale each full capture to a small README thumbnail (Pillow)."""
     try:
@@ -118,6 +170,7 @@ def main() -> int:
                 return 0
         try:
             sizes = capture(browser)
+            sizes.update(capture_export_wrong(browser))
         finally:
             browser.close()
     thumbs = make_thumbnails(sizes)

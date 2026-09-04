@@ -7,11 +7,13 @@
 
 | 产物 | 你拿它做什么 | 预览 |
 |---|---|---|
-| **复习提纲** | 按章背诵，知识点打四色重要度标签，章末折叠自测 | [![复习提纲预览](showcase/preview/outline-thumb.png)](showcase/preview/outline.png) |
-| **复习题** | 逐题作答、自动批改、逐题解析、错题集、掌握度报告 | [![复习题预览](showcase/preview/quiz-thumb.png)](showcase/preview/quiz.png) |
-| **知识图谱** | 章节→知识点 + 依赖虚线 + 枢纽概念星标，拖拽缩放 | [![知识图谱预览](showcase/preview/graph-thumb.png)](showcase/preview/graph.png) |
+| **知识清单** | 按章背诵：杂志式章卡分组；知识点四色重要度；content 自动把比较/并列渲染成**对比表、流程、分类**（少超长句）；章末折叠自测 | [![知识清单预览](showcase/preview/outline-thumb.png)](showcase/preview/outline.png) |
+| **复习题** | 逐题作答、自动批改、逐题解析；题型按客观/主观；**极速刷题**整页下滑作答、**去AI**隐藏 AI 生成题、**错题本 + 一键导出错题 HTML**、键盘 ←/→/Enter 切题；掌握度报告 | [![复习题预览](showcase/preview/quiz-thumb.png)](showcase/preview/quiz.png) |
+| **知识图谱** | **放射总览**（课程→章节一圈），点某章向外展开它的知识点、点气泡看结构化详情；可全屏 | [![知识图谱预览](showcase/preview/graph-thumb.png)](showcase/preview/graph.png) |
 
-<sub>缩略图为桌面视图小图；点击任一张可查看全尺寸截图。</sub>
+<sub>三份均单文件、离线可开可打印；桌面与移动端已分别适配（移动端表格/字号专项处理）。缩略图为桌面小图，点击可看全尺寸。</sub>
+
+复习题里可一键把错题本导出成独立离线 HTML（受"去AI"影响）：[错题本导出示例](showcase/preview/wrong.png) [![错题导出预览](showcase/preview/wrong-thumb.png)](showcase/preview/wrong.png)
 
 [![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](requirements.txt)
@@ -46,13 +48,13 @@ npx skills add Tissue-for-charlie/exam-kit
 装完这样说：
 
 ```text
-请用 exam-kit 处理这门课的 PPT、PDF 和 Word 资料：先扫描并按章节分组，再提取文字；随后生成知识骨架和原题清单；最后输出复习提纲、复习题和知识图谱三份离线 HTML。原题请保留来源，无法从资料确认的内容请明确标注。
+请用 exam-kit 处理这门课的 PPT、PDF 和 Word 资料：先扫描并按章节分组，再提取文字；随后生成知识骨架和原题清单；最后输出知识清单、复习题和知识图谱三份离线 HTML。原题请保留来源，无法从资料确认的内容请明确标注。
 ```
 
 也直接说这些话触发它：
 
 - “帮我整理这门课的期末复习资料。”
-- “根据这些课件生成复习提纲和自测题。”
+- “根据这些课件生成知识清单和自测题。”
 - “把这几份 PDF、PPT 和板书照片按章节整理。”
 - “划出必考点，并给每个知识点配题。”
 - “做一张这门课的知识依赖图。”

@@ -19,7 +19,7 @@ from typing import Any
 
 
 ARTIFACTS = {
-    "outline.html": "复习提纲",
+    "outline.html": "知识清单",
     "quiz.html": "复习题",
     "graph.html": "知识图谱",
 }
@@ -380,7 +380,7 @@ def build() -> dict[str, Any]:
         run_renderer(scripts / "render_graph.py", work, "graph renderer")
 
         sources = {
-            "outline.html": (renderer_output(work, course, "复习提纲"),
+            "outline.html": (renderer_output(work, course, "知识清单"),
                              ("MySQL Study Demo", "关系模型", "details", "自测")),
             "quiz.html": (renderer_output(work, course, "复习题"),
                           ("MySQL Study Demo", "第 1 题", "原题", "解析")),

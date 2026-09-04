@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""exam-kit Phase 4a: 渲染复习提纲 HTML（Claude 式杂志感 · 双栏布局）。
+"""exam-kit Phase 4a: 渲染知识清单 HTML（Claude 式杂志感 · 双栏布局）。
 
 用法: python render_outline.py <资料目录>
-读取 .final_prep/knowledge_skeleton.json，输出 <课程名>-复习提纲.html。
+读取 .final_prep/knowledge_skeleton.json，输出 <课程名>-知识清单.html。
 
 视觉规范（在上一版基础上 + 布局升级）：
 - 暖奶油纸底 #FAF9F5 + 单一珊瑚/赤陶 accent #D97757
 - 衬线大标题（Georgia + 宋体回退）+ 正文无衬线，杂志感
 - 【新增】左 sticky sidebar（260px 默认，可拖拽 180-560px，可折叠成 60px）+ 右 main content
 - sidebar 顶部：eyebrow + 课程名 + 一行 meta
-- sidebar 中部：两级目录（章节 + 知识点），滚动同步高亮当前阅读区段
+- sidebar 中部：两级目录（章节 + 知识点），滚动同步高亮当前阅读区段，
+  且左栏自动滚动把激活目录项带进可视区（阴影和滚轮一起走）
+- 正文宽度随右区可用宽度自适应居中（不靠视口断点切居中/贴左 → Ctrl+滚轮缩放不跳偏）
 - sidebar 右侧 6px resize 把手
 - sidebar 边线外置一枚 ✕/☰ 折叠切换按钮（不在 overflow 内）
 - 章节锚点滚动同步：IntersectionObserver 实时给 sidebar 目录加 .active
@@ -49,6 +51,9 @@ OUTLINE_CSS = """
   --radius: 14px;
   --serif: "Georgia", "Times New Roman", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   --sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --mono: "SFMono-Regular", "Cascadia Code", Consolas, "Liberation Mono", Menlo, monospace;
+  --code-bg: #F1EFE9;
+  --code-line: #E3DFD3;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -280,14 +285,14 @@ body.sb-collapsed .sb-rail-foot { display: block; }
 .sb-overlay { display: none; }
 
 /* ===== Main Content ===== */
+/* 正文随「右区可用宽度」自适应：放得下 760px 就居中，放不下就收窄填满，
+   不再用 @media(min-width:1180px) 这类视口断点切「居中/贴左」——
+   Ctrl+滚轮缩放会改 CSS 视口宽度，一跨断点正文就整体往左跳。 */
 main.content {
   max-width: 760px;
+  margin: 0 auto;
   padding: 60px 40px 120px;
-  margin: 0;
   min-height: 100vh;
-}
-@media (min-width: 1180px) {
-  main.content { margin: 0 auto; }
 }
 
 /* ── Hero 头部 ── */
@@ -322,35 +327,83 @@ h1.course-title {
   color: var(--ink-2); letter-spacing: .12em;
 }
 
-/* ── 章节 ── */
-section.chapter { margin-top: 60px; scroll-margin-top: 28px; }
+/* ── 章节（杂志式：眉题 + 大衬线标题 + 右侧极浅珊瑚大序号水印） ── */
+section.chapter { margin-top: 74px; scroll-margin-top: 30px; }
 .ch-head {
-  display: flex; align-items: baseline; gap: 18px;
-  padding-bottom: 15px; border-bottom: 1px solid var(--line-strong);
+  display: flex; align-items: center; gap: 24px;
 }
-.ch-index {
-  font-family: var(--serif); font-size: 36px; font-weight: 600;
-  color: var(--accent); line-height: 1; letter-spacing: -.01em;
+.ch-main {
+  flex: 1; min-width: 0; position: relative;
+  padding-bottom: 12px; border-bottom: 1px solid var(--line-strong);
+}
+.ch-main::after {
+  content: ""; position: absolute; left: 0; bottom: -1px;
+  width: 46px; height: 2px; background: var(--accent);
+}
+.ch-eyebrow {
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  letter-spacing: .32em; color: var(--accent-deep); text-transform: uppercase;
+  margin-bottom: 9px;
 }
 .ch-head h2 {
-  font-family: var(--serif); font-size: 25px; font-weight: 600;
-  margin: 0; color: var(--ink); letter-spacing: .01em; flex: 1;
+  font-family: var(--serif); font-size: 30px; font-weight: 700;
+  margin: 0; color: var(--ink); letter-spacing: .01em; line-height: 1.22;
+}
+.ch-mark {
+  font-family: var(--serif); font-weight: 700; font-size: 78px; line-height: 1;
+  color: rgba(217, 119, 87, .17); flex: none; user-select: none;
 }
 .chapter-summary {
-  color: var(--ink-2); font-size: 15px; margin: 16px 0 0 0;
+  color: var(--ink-2); font-size: 15.5px; line-height: 1.95; margin: 16px 0 0 0;
 }
 .chapter-summary strong { color: var(--ink); font-weight: 700; }
 
 /* ── 知识点 ── */
-article.kc { margin: 32px 0 0; scroll-margin-top: 28px; }
+article.kc { margin: 42px 0 0; scroll-margin-top: 28px; }
 article.kc h3 {
   display: flex; align-items: baseline; gap: 12px;
-  font-family: var(--sans); font-size: 17px; font-weight: 700;
-  margin: 0 0 13px; color: var(--ink); line-height: 1.4;
+  font-family: var(--sans); font-size: 20px; font-weight: 700;
+  margin: 0 0 14px; color: var(--ink); line-height: 1.4;
 }
 .kc-title { flex: 1; }
-.kc-body { margin: 0; color: #3B362F; font-size: 15.5px; }
+.kc-body { margin: 0; color: #26221E; font-size: 17px; line-height: 2.0; }
 .kc-body strong { color: var(--ink); font-weight: 700; }
+/* 纯段落：段与段之间明显留白 */
+.kc-body p, blockquote.must p { margin: 0; }
+.kc-body p + p, blockquote.must p + p { margin-top: .8em; }
+/* content 自动拆出的要点列表（GPT 式：带圆点、行距松） */
+.kc-body ul.kc-list, blockquote.must ul.kc-list {
+  list-style: none; margin: 0; padding: 0;
+}
+.kc-body ul.kc-list + ul.kc-list, blockquote.must ul.kc-list + ul.kc-list { margin-top: .8em; }
+.kc-body ul.kc-list li, blockquote.must ul.kc-list li {
+  position: relative; padding-left: 1.15em; margin: .42em 0;
+}
+.kc-body ul.kc-list li::before, blockquote.must ul.kc-list li::before {
+  content: ""; position: absolute; left: 0; top: .84em;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); opacity: .55;
+}
+/* content 结构化写法：对比表 / 流程箭头 / 分类树 */
+.kc-body table.kc-table, blockquote.must table.kc-table { margin: .35em 0 .2em; }
+.kf { margin: .2em 0 .25em; }
+.kf .step {
+  display: inline-block; padding: 2px 12px; border-radius: 999px;
+  background: var(--bg-muted); border: 1px solid var(--code-line);
+  font-size: .92em; color: var(--ink);
+}
+.kf .arr { color: var(--accent); font-weight: 700; margin: 0 .1em; }
+.kc-body ul.kc-tree, blockquote.must ul.kc-tree {
+  list-style: none; margin: .2em 0 .25em; padding-left: .1em;
+}
+.kc-tree li { position: relative; padding-left: 1em; margin: .16em 0; }
+.kc-tree li::before {
+  content: ""; position: absolute; left: .05em; top: .74em;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); opacity: .55;
+}
+.kc-tree ul { margin: .12em 0 .12em; padding-left: 1.05em; }
+.kc-tree ul li::before { width: 4px; height: 4px; top: .66em; opacity: .35; }
 
 /* ── 重要度标签：色点 + 文字胶囊 ── */
 .tag {
@@ -376,8 +429,8 @@ blockquote.must {
   background: var(--accent-wash);
   border-left: 3px solid var(--accent);
   border-radius: 0 12px 12px 0;
-  padding: 20px 22px 18px 24px;
-  margin: 0; color: #3B332C; font-size: 15.5px; line-height: 1.85;
+  padding: 24px 26px 20px 28px;
+  margin: 0; color: #29231E; font-size: 17px; line-height: 2.0;
 }
 blockquote.must::before {
   content: "必考考点";
@@ -388,13 +441,19 @@ blockquote.must::before {
 }
 blockquote.must strong { color: var(--ink); font-weight: 700; }
 
-/* ── 代码块 ── */
-code { background: var(--bg-muted); padding: 2px 7px; border-radius: 5px; font-size: .92em; }
-pre { background: var(--bg-muted); padding: 14px 16px; border-radius: 10px; overflow-x: auto; }
-pre code { background: none; padding: 0; }
+/* ── 代码块（GPT 式：浅灰底、细边、等宽字体） ── */
+code {
+  background: var(--code-bg); border: 1px solid var(--code-line); color: #463C33;
+  padding: 1px 6px; border-radius: 5px; font-family: var(--mono); font-size: .88em;
+}
+pre {
+  background: var(--code-bg); border: 1px solid var(--code-line);
+  padding: 16px 18px; border-radius: 10px; overflow-x: auto; line-height: 1.7; margin: 18px 0;
+}
+pre code { background: none; border: 0; padding: 0; font-size: .92em; color: #2E2A24; }
 
 /* ── 表格 ── */
-table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: .95em; }
+table { border-collapse: collapse; width: 100%; margin: 18px 0; font-size: .95em; line-height: 1.7; }
 td, th { border: 1px solid var(--line); padding: 7px 12px; text-align: left; }
 th { background: var(--bg-muted); font-weight: 700; }
 tr:nth-child(even) td { background: #FCFBF7; }
@@ -403,12 +462,12 @@ tr:nth-child(even) td { background: #FCFBF7; }
 details.selftest {
   background: var(--bg-muted);
   border: 1px solid var(--line);
-  border-radius: 11px; margin: 16px 0 0; padding: 13px 19px;
+  border-radius: 11px; margin: 18px 0 0; padding: 14px 20px;
   transition: background .2s ease, border-color .2s ease;
 }
 details.selftest:hover { border-color: var(--line-strong); }
 details.selftest summary {
-  cursor: pointer; font-size: 14.5px; color: var(--ink-2);
+  cursor: pointer; font-size: 14.5px; color: var(--ink-3);
   list-style: none; user-select: none; outline: none;
 }
 details.selftest summary::-webkit-details-marker { display: none; }
@@ -416,8 +475,8 @@ details.selftest summary::before { content: "＋ "; color: var(--accent); font-w
 details.selftest[open] summary::before { content: "－ "; }
 details.selftest[open] summary { color: var(--ink); }
 .selftest-a {
-  margin-top: 11px; color: var(--ink); background: var(--bg-elevated);
-  padding: 11px 15px; border-radius: 8px; font-size: 14.5px;
+  margin-top: 12px; color: var(--ink); background: var(--bg-elevated);
+  padding: 12px 16px; border-radius: 8px; font-size: 14.5px; line-height: 1.9;
 }
 
 /* ── 回到顶部 ── */
@@ -447,6 +506,10 @@ details.selftest[open] summary { color: var(--ink); }
 
 @media (max-width: 600px) {
   body { padding-left: 0; }
+  /* 移动端表格：压缩换行填满屏宽，不用横滑（桌面不变） */
+  table { table-layout: fixed; width: 100%; font-size: 13px; line-height: 1.65; }
+  th, td { padding: 5px 6px; word-break: break-word; overflow-wrap: anywhere; }
+  pre { font-size: 12px; }
   /* Sidebar 变 off-canvas 抽屉：默认滑出屏幕外 */
   aside.sidebar {
     width: 280px;
@@ -486,9 +549,20 @@ details.selftest[open] summary { color: var(--ink); }
   h1.course-title { font-size: 34px; }
   .stats { gap: 30px; }
   .stat b { font-size: 27px; }
-  .ch-head h2 { font-size: 21px; }
-  .ch-index { font-size: 30px; }
+  .ch-head h2 { font-size: 24px; }
+  .ch-eyebrow { font-size: 10px; margin-bottom: 6px; }
+  .ch-mark { font-size: 46px; }
+  .ch-head { gap: 14px; }
+  .ch-main { padding-bottom: 9px; }
   .backtop { right: 16px; bottom: 20px; width: 40px; height: 40px; }
+  /* 移动端正文字号小一档（桌面不变） */
+  article.kc h3 { font-size: 18px; }
+  .kc-body { font-size: 15.5px; line-height: 1.9; }
+  blockquote.must { font-size: 15.5px; line-height: 1.9; padding: 18px 18px 15px 20px; }
+  .chapter-summary { font-size: 14px; line-height: 1.85; }
+  details.selftest summary { font-size: 13px; }
+  .selftest-a { font-size: 13px; line-height: 1.8; }
+  .kc-body p + p, blockquote.must p + p { margin-top: .6em; }
 }
 """
 
@@ -664,6 +738,29 @@ OUTLINE_JS = """
     var activeChId = chapterOfKc.get(activeKcId) || null;
     paintActive(activeKcId, activeChId);
   }
+  // ── 让左栏目录跟着右区滚动走：激活项高亮 + 把它滚进左栏可视区一起动 ──
+  var sbAsideEl = document.querySelector('aside.sidebar');
+  var lastActiveHref = '';
+  function followSidebar(){
+    if (!sbAsideEl) return;
+    if (body.classList.contains('sb-collapsed')) return; // 折叠细条态无目录
+    // 优先跟随当前知识点项；没有则跟随所在章节项
+    // （.sub/.ch 在 li 上，.active 在 <a> 上，所以用 li 前缀限定）
+    var link = document.querySelector('.sb-toc li.sub > a.active') ||
+               document.querySelector('.sb-toc li.ch > a.active');
+    if (!link) return;
+    var href = link.getAttribute('href') || '';
+    if (href === lastActiveHref) return; // 高亮没变就不动，避免抢用户手动滚动左栏
+    lastActiveHref = href;
+    var sr = sbAsideEl.getBoundingClientRect();
+    var lr = link.getBoundingClientRect();
+    var pad = 14;
+    if (lr.top < sr.top + pad) {
+      sbAsideEl.scrollTop += (lr.top - sr.top) - pad;
+    } else if (lr.bottom > sr.bottom - pad) {
+      sbAsideEl.scrollTop += (lr.bottom - sr.bottom) + pad;
+    }
+  }
   var rafScheduled = false;
   function scheduleUpdate(){
     if (rafScheduled) return;
@@ -671,6 +768,7 @@ OUTLINE_JS = """
     requestAnimationFrame(function(){
       rafScheduled = false;
       updateActive();
+      followSidebar();
       // 顺便刷新进度条（合并到同一个 rAF）
       var h = document.documentElement;
       var max = h.scrollHeight - h.clientHeight;
@@ -683,6 +781,7 @@ OUTLINE_JS = """
   window.addEventListener('scroll', scheduleUpdate, { passive: true });
   window.addEventListener('resize', scheduleUpdate);
   updateActive();
+  followSidebar();
   var bt0 = document.getElementById('backtop');
   if (bt0) bt0.addEventListener('click', function(){ window.scrollTo({top:0, behavior:'smooth'}); });
 
@@ -721,6 +820,133 @@ def render_markup(text: str) -> str:
             out.append(f"<strong>{html.escape(tok[2:-2])}</strong>")
         else:
             out.append(html.escape(tok))
+    return "".join(out)
+
+def _cells(line: str) -> list[str]:
+    """解析一行 `| a | b |` -> 单元格列表。"""
+    s = line.strip()
+    if s.startswith("|"):
+        s = s[1:]
+    if s.endswith("|"):
+        s = s[:-1]
+    return [c.strip() for c in s.split("|")]
+
+
+def _flow_tokens(line: str):
+    """整行是 `A → B → C`（无句读）→ 返回各段；否则 None。"""
+    if "→" not in line:
+        return None
+    parts = [p.strip() for p in line.split("→")]
+    if not (2 <= len(parts) <= 7):
+        return None
+    banned = set("，。；、：（）：")
+    for p in parts:
+        if not p or len(p) > 18:
+            return None
+        if any(ch in banned for ch in p):
+            return None
+    return parts
+
+
+def _tree_html(lines: list[str]) -> str:
+    """把 `- 大类` / `  - 子类` 的缩进行列转成嵌套 ul.kc-tree。"""
+    items = []
+    for ln in lines:
+        stripped = ln.lstrip(" ")
+        indent = (len(ln) - len(stripped)) // 2
+        text = stripped[2:].strip() if stripped.startswith("- ") else stripped.strip("- ").strip()
+        items.append((indent, text))
+
+    def build(idx: int, level: int):
+        h = '<ul class="kc-tree">'
+        while idx < len(items) and items[idx][0] == level:
+            txt = items[idx][1]
+            idx += 1
+            h += f"<li><span>{render_markup(txt)}</span>"
+            if idx < len(items) and items[idx][0] > level:
+                sub, idx = build(idx, level + 1)
+                h += sub
+            h += "</li>"
+        return h + "</ul>", idx
+
+    if not items:
+        return ""
+    h, _ = build(0, items[0][0])
+    return h
+
+
+def _table_html(rows: list[list[str]]) -> str:
+    ncols = max(len(r) for r in rows)
+    rows = [list(r) + [""] * (ncols - len(r)) for r in rows]
+    head = "".join(f"<th>{render_markup(c)}</th>" for c in rows[0])
+    body = "".join(
+        "<tr>" + "".join(f"<td>{render_markup(c)}</td>" for c in r) + "</tr>" for r in rows[1:]
+    )
+    return f'<table class="kc-table"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>'
+
+
+def render_content(text: str) -> str:
+    """把知识点 content 渲染成可读正文（支持轻量结构化写法）。
+
+    写法约定（content 里直接用换行/空行分隔结构）：
+    - 对比表：连续若干行 `| 列 | 列 |`（首行表头）→ 真表格；
+    - 流程：独立成行、整行只含 `A → B → C` → 带箭头的流程条；
+    - 分类树：`- 大类` 起、子项缩进两格 `  - 小类` → 嵌套树；
+    - 「；」并列 → 带圆点的要点列表；
+    - 其余按段落（<p>），段内换行转 <br>。
+    """
+    if not text:
+        return ""
+    lines = text.split("\n")
+    out = []
+    i, n = 0, len(lines)
+    while i < n:
+        s = lines[i].strip()
+        if not s:
+            i += 1
+            continue
+        if s.startswith("|"):
+            rows = []
+            while i < n and lines[i].strip().startswith("|"):
+                rows.append(_cells(lines[i]))
+                i += 1
+            out.append(_table_html(rows))
+            continue
+        ft = _flow_tokens(s)
+        if ft is not None:
+            chips = " <span class=\"arr\">→</span> ".join(
+                f'<span class="step">{render_markup(p)}</span>' for p in ft
+            )
+            out.append(f'<div class="kf">{chips}</div>')
+            i += 1
+            continue
+        if s.startswith("-"):
+            block = []
+            while i < n and lines[i].strip().startswith("-"):
+                block.append(lines[i])
+                i += 1
+            out.append(_tree_html(block))
+            continue
+        buf = [s]
+        i += 1
+        while i < n:
+            nx = lines[i].strip()
+            if not nx or nx.startswith("|") or nx.startswith("-"):
+                break
+            if _flow_tokens(nx) is not None:
+                break
+            buf.append(nx)
+            i += 1
+        para = "\n".join(buf)
+        if "；" in para:
+            items = [x.strip().rstrip("。；") for x in para.split("；") if x.strip()]
+            if len(items) >= 2:
+                lis = "".join(
+                    f"<li>{render_markup(x).replace(chr(10), '<br>')}</li>" for x in items
+                )
+                out.append(f'<ul class="kc-list">{lis}</ul>')
+                continue
+        out.append(f'<p class="kc-p">{render_markup(para).replace(chr(10), "<br>")}</p>')
     return "".join(out)
 
 
@@ -839,18 +1065,20 @@ def render_main(skeleton: dict) -> str:
     for idx, ch in enumerate(chapters):
         cid = ch["id"]
         label = ch.get("label") or cid
-        num, title = split_chapter_label(label)
+        _, title = split_chapter_label(label)
+        serial = pad_index(str(idx + 1))
         parts.append(f'<section class="chapter reveal" id="{html.escape(cid)}">')
-        no_html = f'<span class="ch-index">{html.escape(pad_index(num))}</span>' if num else ""
-        parts.append(
-            f'<div class="ch-head">{no_html}'
-            f'<h2>{html.escape(title)}</h2>'
-            f'</div>'
-        )
+        parts.append('<div class="ch-head">')
+        parts.append('<div class="ch-main">')
+        parts.append(f'<div class="ch-eyebrow">CHAPTER · {html.escape(serial)}</div>')
+        parts.append(f'<h2>{html.escape(title)}</h2>')
+        parts.append('</div>')
+        parts.append(f'<div class="ch-mark" aria-hidden="true">{html.escape(serial)}</div>')
+        parts.append('</div>')
         if ch.get("summary"):
             parts.append(
                 f'<p class="chapter-summary"><strong>核心问题</strong>　'
-                f'{html.escape(ch["summary"])}</p>'
+                f'{render_markup(ch["summary"])}</p>'
             )
 
         for kc in ch.get("kcs", []):
@@ -862,7 +1090,7 @@ def render_main(skeleton: dict) -> str:
                 f'{tag_html}</h3>'
             )
             if kc.get("content"):
-                body = render_markup(kc["content"])
+                body = render_content(kc["content"])
                 if kimp == "must":
                     parts.append(f'<blockquote class="must">{body}</blockquote>')
                 else:
@@ -895,7 +1123,7 @@ def render(skeleton: dict) -> str:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="渲染复习提纲 HTML")
+    ap = argparse.ArgumentParser(description="渲染知识清单 HTML")
     ap.add_argument("root", help="资料目录")
     args = ap.parse_args()
     root = os.path.abspath(args.root)
@@ -907,7 +1135,7 @@ def main():
     body = render(skeleton)
     course = skeleton.get("course") or os.path.basename(root)
     safe = re.sub(r'[\\/:*?"<>|]', "_", course)
-    title = f"{course} · 复习提纲"
+    title = f"{course} · 知识清单"
     doc = (
         '<!DOCTYPE html>\n<html lang="zh">\n<head>\n'
         '<meta charset="utf-8">\n'
@@ -919,11 +1147,12 @@ def main():
         f"<script>{OUTLINE_JS}</script>\n"
         "</body>\n</html>"
     )
-    out = os.path.join(root, f"{safe}-复习提纲.html")
+    out = os.path.join(root, f"{safe}-知识清单.html")
     with open(out, "w", encoding="utf-8") as f:
         f.write(doc)
-    print(f"复习提纲 -> {out}")
+    print(f"知识清单 -> {out}")
 
 
 if __name__ == "__main__":
     main()
+
