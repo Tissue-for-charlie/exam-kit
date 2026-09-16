@@ -343,17 +343,19 @@ def render(layout):
              + _nested_text(course["cx"], course["cy"], course["lines"], CH_TEXT, 20, 11)
              + "</g>")
 
-    # 各章节点
+    # 各章节点（编号画在胶囊内、rect 之后，总览常驻可见，且随 .dim 一起淡出聚焦）
     for c in chapters:
         num_x = c["cx"] - c["w"] / 2 + 12
         title_x = num_x
-        if c["num"]:
-            P.append(f'<text class="serif" x="{num_x:.0f}" y="{c["cy"] + 7:.0f}" font-size="18" '
-                     f'font-weight="700" fill="{ACCENT}">{html.escape(c["num"])}</text>')
-            title_x += _tw(c["num"], CH_CJK, CH_AS) + 10
+        # 编号与标题首行共用基线，确保同一行、不是右下偏的角标
+        top_base = c["cy"] - (len(c["tlines"]) - 1) * 9
         inner = []
+        if c["num"]:
+            inner.append(f'<text class="serif" x="{num_x:.0f}" y="{top_base:.0f}" font-size="18" '
+                         f'font-weight="700" fill="{ACCENT}">{html.escape(c["num"])}</text>')
+            title_x += _tw(c["num"], CH_CJK, CH_AS) + 10
         for i, ln in enumerate(c["tlines"]):
-            yy = c["cy"] - (len(c["tlines"]) - 1) * 9 + i * 18
+            yy = top_base + i * 18
             inner.append(f'<text x="{title_x:.0f}" y="{yy:.0f}" font-size="15" '
                          f'font-weight="600" fill="{CH_TEXT}">{html.escape(ln)}</text>')
         P.append(f'<g class="chap" data-ch="{html.escape(c["id"])}" style="cursor:pointer">'
