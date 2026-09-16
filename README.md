@@ -8,7 +8,7 @@
 | 产物 | 你拿它做什么 | 预览 |
 |---|---|---|
 | **知识清单** | 按章背诵：杂志式章卡分组；知识点四色重要度；content 自动把比较/并列渲染成**对比表、流程、分类**（少超长句）；章末折叠自测 | [![知识清单预览](showcase/preview/outline-thumb.png)](showcase/preview/outline.png) |
-| **复习题** | 逐题作答、自动批改、逐题解析；题型按客观/主观；填空题空位自动补齐（兼容 `___` 与 `【】`）；**极速刷题**整页下滑作答、**去AI**隐藏 AI 生成题、**错题本 + 一键导出错题 HTML**、键盘 ←/→/Enter 切题；掌握度报告 | [![复习题预览](showcase/preview/quiz-thumb.png)](showcase/preview/quiz.png) |
+| **复习题** | 逐题作答、自动批改、逐题解析；题型按客观/主观；**极速刷题**整页下滑作答、**去AI**隐藏 AI 生成题、**错题本 + 一键导出错题 HTML**、键盘 ←/→/Enter 切题；掌握度报告 | [![复习题预览](showcase/preview/quiz-thumb.png)](showcase/preview/quiz.png) |
 | **复习题 · 错题本导出** | 由复习题一键生成的独立离线 HTML：仅含错题、答案展开、可打印（受"去AI"影响） | [![错题导出预览](showcase/preview/wrong-thumb.png)](showcase/preview/wrong.png) |
 | **知识图谱** | **放射总览**（课程→章节一圈），点某章向外展开它的知识点、点气泡看结构化详情；可全屏 | [![知识图谱预览](showcase/preview/graph-thumb.png)](showcase/preview/graph.png) |
 
