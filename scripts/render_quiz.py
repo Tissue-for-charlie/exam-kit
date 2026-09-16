@@ -214,6 +214,7 @@ body.fast .main { padding-bottom: 46px; }
 .fill-input:focus { border-color: var(--accent); }
 .fill-input.correct { border-color: var(--correct); background: #f6ffed; }
 .fill-input.wrong { border-color: var(--wrong); background: #fff1f0; }
+.fill-extra { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 2px; }
 
 /* 主观题作答区 */
 .subj-input {
@@ -429,6 +430,8 @@ def _render_question(q, gid):
         ans_list = q.get("answer") or []
         if isinstance(ans_list, str):
             ans_list = [ans_list]
+        # 空位占位符：兼容英文下划线 ___ 与中文【】（AI 命题常用），空白夹注不误伤
+        n_need = max(len(ans_list), 1)
         idx = [0]
         def repl(m):
             i = idx[0]
@@ -437,8 +440,20 @@ def _render_question(q, gid):
             w = _fill_blank_width(a)
             return (f'<input class="fill-input" style="width:{w:.0f}px" '
                     f'data-blank="{i}" data-q="{qid}" autocomplete="off">')
-        qtext = re.sub(r"_{3,}", repl, qtext)
-        lines.append(f'<div class="fill-wrap"><div class="q-stem">{qtext}</div></div>')
+        qtext = re.sub(r"_{3,}|【\s*】", repl, qtext)
+        # 空位不足 / 题干根本没写空位时：补足输入框，保证每道填空都有可填处
+        #（判分要求输入框数 == 答案数，缺了会永远判错）
+        if idx[0] < n_need:
+            extra = []
+            for i in range(idx[0], n_need):
+                a = ans_list[i] if i < len(ans_list) else ""
+                w = _fill_blank_width(a)
+                extra.append(f'<input class="fill-input" style="width:{w:.0f}px" '
+                             f'data-blank="{i}" data-q="{qid}" autocomplete="off">')
+            lines.append(f'<div class="fill-wrap"><div class="q-stem">{qtext}</div>'
+                         f'<div class="fill-extra">{"".join(extra)}</div></div>')
+        else:
+            lines.append(f'<div class="fill-wrap"><div class="q-stem">{qtext}</div></div>')
 
     # 操作按钮（单选/判断：点击选项自动判分；多选/填空/主观题：手动提交）
     if t in SUBJECTIVE:
