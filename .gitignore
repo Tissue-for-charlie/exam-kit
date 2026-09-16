@@ -12,6 +12,9 @@ venv/
 showcase/output/*.html
 showcase/verification.json
 
+# superpowers 工具本地运行状态
+.superpowers/
+
 # 系统 / 编辑器
 .DS_Store
 Thumbs.db
