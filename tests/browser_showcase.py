@@ -52,7 +52,8 @@ def run() -> int:
                 return unavailable("Chromium executable is not installed")
             browser = playwright.chromium.launch(headless=True)
             try:
-                desktop = browser.new_page(viewport={"width": 1440, "height": 900})
+                desktop = browser.new_page(viewport={"width": 1440, "height": 900},
+                                           accept_downloads=True)
                 mobile = browser.new_page(viewport={"width": 390, "height": 844}, is_mobile=True)
                 cases = {
                     "outline.html": [".sidebar", "details.selftest", ".course-title"],
@@ -107,6 +108,54 @@ def run() -> int:
                         closed = desktop.evaluate("document.body.classList.contains('qnav-open')")
                         if opened == closed:
                             raise RuntimeError("quiz navigator toggle did not change state")
+                        if desktop.locator('.qnav-cell[tabindex="0"]').count() != 1:
+                            raise RuntimeError("quiz navigator should expose a single tab stop")
+                        # 题内搜索：筛出更少的题，并让面板同步重编号
+                        if desktop.locator("#qSearch").count() != 1:
+                            raise RuntimeError("quiz is missing the question search box")
+                        desktop.fill("#qSearch", "关系")
+                        desktop.wait_for_timeout(250)
+                        hits = desktop.evaluate("() => curList.length")
+                        if hits < 1 or hits >= total_cards:
+                            raise RuntimeError(f"quiz search did not narrow the list ({hits})")
+                        if desktop.locator(".qnav-cell").count() != hits:
+                            raise RuntimeError("quiz search did not renumber the navigator")
+                        desktop.fill("#qSearch", "")
+                        desktop.wait_for_timeout(200)
+                        # 标记⭐：星标后「⭐ 标记」模式只剩这道题
+                        desktop.locator(".q-card.active .star-btn").first.click()
+                        desktop.wait_for_timeout(200)
+                        if desktop.evaluate("() => starCnt.textContent") != "1":
+                            raise RuntimeError("quiz star toggle did not register")
+                        desktop.click('.mode-btn[data-mode="star"]')
+                        desktop.wait_for_timeout(250)
+                        if desktop.evaluate("() => curList.length") != 1:
+                            raise RuntimeError("quiz star mode did not filter to starred questions")
+                        desktop.click('.mode-btn[data-mode="all"]')
+                        desktop.wait_for_timeout(150)
+                        # 模拟考试：考试中不揭晓对错，交卷后弹结果
+                        if desktop.locator(".mode-btn.exam-entry").count() != 1:
+                            raise RuntimeError("quiz is missing the mock exam entry")
+                        desktop.evaluate("() => beginExam()")
+                        desktop.wait_for_timeout(300)
+                        if not desktop.evaluate("() => document.body.classList.contains('exam-on')"):
+                            raise RuntimeError("quiz mock exam did not start")
+                        if desktop.evaluate("() => document.querySelector('.q-card.active .q-result').offsetParent !== null"):
+                            raise RuntimeError("quiz mock exam leaks the verdict before submitting")
+                        desktop.evaluate("() => submitExam()")
+                        desktop.wait_for_timeout(300)
+                        if not desktop.evaluate("() => reportOverlay.classList.contains('show')"):
+                            raise RuntimeError("quiz mock exam did not show its result")
+                        if desktop.locator(".rep-cell").count() < 1:
+                            raise RuntimeError("quiz mock exam result has no per-question grid")
+                        desktop.evaluate("() => closeReport()")
+                        desktop.wait_for_timeout(150)
+                        # Word 双卷：导出的 .docx 必须是合法 OOXML 包
+                        with desktop.expect_download() as download:
+                            desktop.evaluate("() => exportPaperWord(false)")
+                        raw = Path(download.value.path()).read_bytes()
+                        if not raw.startswith(b"PK") or b"word/document.xml" not in raw:
+                            raise RuntimeError("quiz docx export is not a valid docx package")
                     elif name == "graph.html":
                         svg = desktop.locator("svg#g")
                         before = svg.get_attribute("style") or ""
