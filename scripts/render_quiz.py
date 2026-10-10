@@ -331,6 +331,19 @@ body:not(.fast) .quiz-list .q-card .q-actions .btn-primary { display: none; }
 .nav-fixed .nav-info { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .nav-fixed .btn { min-width: 88px; text-align: center; }
 
+/* ── 回到顶部：页面滚动条被隐藏，极速刷题这种长列表需要它兜底 ── */
+.backtop {
+  position: fixed; right: 24px; bottom: 88px; z-index: 150;
+  width: 42px; height: 42px; padding: 0; border-radius: 50%;
+  border: 1px solid var(--line); background: #fff; color: var(--ink-2);
+  box-shadow: 0 6px 20px rgba(16,24,40,.16); cursor: pointer; font-size: 17px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity .2s var(--ease), transform .2s var(--ease), background .16s, color .16s, border-color .16s;
+}
+.backtop:hover { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+body.scrolled .backtop { opacity: 1; transform: none; pointer-events: auto; }
+
 /* ── 右侧题号导航面板（答案卡）── */
 .qnav {
   position: fixed; top: 0; right: 0; bottom: 0; z-index: 260;
@@ -387,6 +400,7 @@ body.qnav-open .qnav { transform: none; visibility: visible; }
   body.qnav-open { padding-right: var(--qnavw); }
   body.qnav-open .qnav-toggle { right: var(--qnavw); }
   body.qnav-open .nav-fixed { right: var(--qnavw); }
+  body.qnav-open .backtop { right: calc(var(--qnavw) + 24px); }
 }
 
 /* 窄屏：题号导航改为右侧滑出抽屉 + 遮罩 */
@@ -461,6 +475,7 @@ table.kc th { background: var(--line-2); }
   /* 三键等宽均分，别把中间题号挤没；题号本身已在顶栏进度里 */
   .nav-fixed .btn { flex: 1 1 0; min-width: 0; padding: 10px 6px; font-size: 13.5px; }
   .nav-fixed .nav-info { font-size: 11px; }
+  .backtop { right: 14px; bottom: 82px; width: 40px; height: 40px; }
   .report-overlay { padding: 10px; }
   .report-card { max-height: 90vh; border-radius: 14px; }
   .report-head { padding: 14px 16px; }
@@ -489,6 +504,7 @@ table.kc th { background: var(--line-2); }
   .report-card { max-height: 92vh; }
   body { overflow-x: hidden; }
   .nav-fixed .btn { min-width: 88px; padding: 10px 8px; font-size: 13.5px; }
+  .backtop { right: 16px; bottom: 84px; }
 }
 
 /* ── 键盘焦点可见（键盘用户唯一的定位依据，别移除 outline） ── */
@@ -507,7 +523,7 @@ table.kc th { background: var(--line-2); }
 @media print {
   body { background: #fff; }
   .header, #topBars, .report-overlay, .nav-fixed, .q-actions, .q-result,
-  .qnav, .qnav-toggle, .qnav-overlay { display: none !important; }
+  .qnav, .qnav-toggle, .qnav-overlay, .backtop, .inline-hint { display: none !important; }
   .main { max-width: none; padding: 0; }
   .q-card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
   .quiz-list .q-card { display: block; }
@@ -754,6 +770,8 @@ def render(quiz: dict) -> str:
         '<div class="qnav-overlay" id="qnavOverlay" onclick="toggleQnav(false)"></div>'
         '<button class="qnav-toggle" id="qnavToggle" type="button" onclick="toggleQnav()" '
         'title="题号导航" aria-label="题号导航">‹</button>'
+        '<button class="backtop" id="backtop" type="button" onclick="scrollToTop()" '
+        'title="回到顶部" aria-label="回到顶部">↑</button>'
     )
 
     parts.append('<div class="nav-fixed"><div class="nav-inner">'
@@ -1575,6 +1593,21 @@ window.addEventListener('resize', updateNavOverflow);
 document.querySelectorAll('.nav').forEach(function(nav){
   nav.addEventListener('scroll', updateNavOverflow, {passive:true});
 });
+
+// ── 回到顶部：页面滚动条被隐藏，长列表（极速刷题/全部题目）需要它兜底 ──
+function scrollToTop(){
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  try { window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); }
+  catch(e){ window.scrollTo(0, 0); }
+}
+var backRaf = null;
+window.addEventListener('scroll', function(){
+  if(backRaf) return;
+  backRaf = requestAnimationFrame(function(){
+    backRaf = null;
+    document.body.classList.toggle('scrolled', window.pageYOffset > 400);
+  });
+}, {passive:true});
 """
 
 
