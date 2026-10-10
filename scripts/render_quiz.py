@@ -242,7 +242,6 @@ body.fast .main { padding-bottom: 46px; }
 }
 .option:hover { border-color: var(--accent2); background: #f8fafc; }
 .option:active { background: #f1f5fb; }
-.option:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .option input { display: none; }
 .option .opt-key {
   width: 26px; height: 26px; border-radius: 50%; background: #f5f5f5; flex-shrink: 0;
@@ -615,9 +614,24 @@ body.exam-on .mode-btn.exam-entry { display: none; }
   .backtop { right: 16px; bottom: 84px; }
 }
 
-/* ── 键盘焦点可见（键盘用户唯一的定位依据，别移除 outline） ── */
+/* ── 键盘焦点可见（键盘用户唯一的定位依据，别移除焦点提示） ── */
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .q-card:focus { outline: none; }
+/* 按钮／选项／输入框／题号格这类「自带边框」的控件：焦点画在边框上（outline-offset 为负），
+   一圈刚好压住原边框，不会像 offset 正数那样变成「两道线」；box-shadow 一并清掉避免出现叠加的光环 */
+.btn:focus-visible, .option:focus-visible, .qnav-cell:focus-visible, .top-btn:focus-visible,
+.toggle-top-btn:focus-visible, .nav button:focus-visible, .mode-btn:focus-visible,
+.fill-input:focus-visible, .subj-input:focus-visible, .search-input:focus-visible,
+.star-btn:focus-visible, .guess-btn:focus-visible, .report-close:focus-visible,
+.filter-toggle:focus-visible, .qnav-toggle:focus-visible, .backtop:focus-visible,
+.menu button:focus-visible, .rep-cell:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+/* 深色顶栏、蓝色实心格：换成白描边才看得见 */
+.header .top-btn:focus-visible, .toggle-top-btn:focus-visible,
+.exam-strip .btn:focus-visible, .qnav-cell.is-current:focus-visible { outline-color: #fff; }
 
 /* ── 尊重系统「减少动态效果」 ── */
 @media (prefers-reduced-motion: reduce) {
@@ -802,26 +816,26 @@ def render(quiz: dict) -> str:
             type_counts[q["type"]] = type_counts.get(q["type"], 0) + 1
 
     # 题型 tab：固定顺序始终出现 全部/单选/多选/判断/填空/主观题/客观题（0 道也占位，避免课程间 tab 飘忽）
-    type_tabs = ['<button class="active" data-type="all" data-roving tabindex="0" onclick="setType(this)">全部'
+    type_tabs = ['<button class="active" data-type="all" onclick="setType(this)">全部'
                  f'<span class="cnt">{sum(type_counts.values())}</span></button>']
     for tt, label in (("choice", "单选题"), ("multi", "多选题"), ("tf", "判断题"), ("fill", "填空题")):
         n = type_counts.get(tt, 0)
-        type_tabs.append(f'<button data-type="{tt}" data-roving onclick="setType(this)">{label}'
+        type_tabs.append(f'<button data-type="{tt}" onclick="setType(this)">{label}'
                          f'<span class="cnt">{n}</span></button>')
     subj_n = sum(type_counts[t] for t in type_counts if t in SUBJECTIVE)
-    type_tabs.append(f'<button data-type="obj" data-roving onclick="setType(this)">客观题'
+    type_tabs.append(f'<button data-type="obj" onclick="setType(this)">客观题'
                      f'<span class="cnt">{total_obj}</span></button>')
     if subj_n:
-        type_tabs.append(f'<button data-type="subj" data-roving onclick="setType(this)">主观题'
+        type_tabs.append(f'<button data-type="subj" onclick="setType(this)">主观题'
                          f'<span class="cnt">{subj_n}</span></button>')
 
     # 章节 tab。questions.json 的 chapter 可能只带 id（如 ch1）没带 label，
     # 此时按 id 从 knowledge_skeleton.json 的 chapterMap 补齐真实章节名。
     chap_map = quiz.get("chapterMap") or {}
-    chapter_tabs = ['<button class="active" data-chapter="all" data-roving tabindex="0" onclick="setChapter(this)">全部章节</button>']
+    chapter_tabs = ['<button class="active" data-chapter="all" onclick="setChapter(this)">全部章节</button>']
     for ch in chapters:
         label = ch.get("label") or chap_map.get(ch["id"]) or ch["id"]
-        chapter_tabs.append(f'<button data-chapter="{ch["id"]}" data-roving onclick="setChapter(this)">{html.escape(label)}</button>')
+        chapter_tabs.append(f'<button data-chapter="{ch["id"]}" onclick="setChapter(this)">{html.escape(label)}</button>')
 
     parts = [
         '<div class="quiz-top">',
@@ -872,16 +886,16 @@ def render(quiz: dict) -> str:
         '<input class="search-input" id="qSearch" type="search" autocomplete="off" '
         'placeholder="搜题干 / 选项 / 知识点" aria-label="搜索题目" oninput="onSearch(this.value)">'
         '<span class="search-count" id="searchCount"></span></div>',
-        f'<div class="nav-row"><span class="nav-label">题型</span><div class="nav" data-roving-group>{"".join(type_tabs)}</div></div>',
-        f'<div class="nav-row"><span class="nav-label">章节</span><div class="nav chapter-nav" data-roving-group>{"".join(chapter_tabs)}</div></div>',
-        '<div class="mode-bar" data-roving-group>'
+        f'<div class="nav-row"><span class="nav-label">题型</span><div class="nav">{"".join(type_tabs)}</div></div>',
+        f'<div class="nav-row"><span class="nav-label">章节</span><div class="nav chapter-nav">{"".join(chapter_tabs)}</div></div>',
+        '<div class="mode-bar">'
         '<span class="mode-label">刷题模式</span>'
-        '<button class="mode-btn active" data-mode="all" data-roving tabindex="0" onclick="setMode(this)">全部题目</button>'
-        '<button class="mode-btn" data-mode="random" data-roving onclick="setMode(this)">随机顺序</button>'
-        '<button class="mode-btn" data-mode="fast" data-roving onclick="setMode(this)">极速刷题</button>'
-        '<button class="mode-btn" data-mode="unanswered" data-roving onclick="setMode(this)">未作答</button>'
-        '<button class="mode-btn" data-mode="wrong" data-roving onclick="setMode(this)">错题本<span class="cnt" id="wrongCnt">0</span></button>'
-        '<button class="mode-btn" data-mode="star" data-roving onclick="setMode(this)">⭐ 标记<span class="cnt" id="starCnt">0</span></button>'
+        '<button class="mode-btn active" data-mode="all" onclick="setMode(this)">全部题目</button>'
+        '<button class="mode-btn" data-mode="random" onclick="setMode(this)">随机顺序</button>'
+        '<button class="mode-btn" data-mode="fast" onclick="setMode(this)">极速刷题</button>'
+        '<button class="mode-btn" data-mode="unanswered" onclick="setMode(this)">未作答</button>'
+        '<button class="mode-btn" data-mode="wrong" onclick="setMode(this)">错题本<span class="cnt" id="wrongCnt">0</span></button>'
+        '<button class="mode-btn" data-mode="star" onclick="setMode(this)">⭐ 标记<span class="cnt" id="starCnt">0</span></button>'
         '<span class="spacer"></span>'
         '<button class="mode-btn exam-entry" type="button" onclick="openExamSetup()" title="限时模拟考试：交卷后统一判分">模拟考试</button>'
         '</div>',
@@ -1283,10 +1297,9 @@ function submitCard(card){
   paintReveal(card, q, correct, false);
   var res = card.querySelector('.q-result');
   updateStats();
-  flashResult(card);
   if(card.classList.contains('active')){
     res.setAttribute('tabindex','-1');
-    try { res.focus({preventScroll:true}); } catch(err) { res.focus(); }
+    try { res.focus({preventScroll:true}); } catch(err) {}
   }
   // 列表变化需刷新：错题本改对、未作答模式答完，都该把这道题移出当前列表
   if(state.mode==='unanswered' || (state.mode==='wrong' && correct && wasWrong)){ rebuildList(); renderCurrent(); }
@@ -1431,22 +1444,24 @@ function syncRoving(holder){
 function syncAllRoving(){
   document.querySelectorAll('[data-roving-group]').forEach(syncRoving);
 }
+// 题号格：方向键 = 换题（格子就是题号），焦点跟着走，Home/End 到第一/最后一题。
+// 题型/章节/模式那三排刻意不接管方向键——方向键始终只负责「切题」，Tab 才管焦点。
 document.addEventListener('keydown', function(e){
   var t = e.target;
   if(!t || !t.closest) return;
-  var holder = t.closest('[data-roving-group]');
-  if(!holder) return;
+  var cell = t.closest('.qnav-cell[data-qid]');
+  if(!cell) return;
   if(!/^(ArrowLeft|ArrowRight|ArrowUp|ArrowDown|Home|End)$/.test(e.key)) return;
-  var items = Array.prototype.slice.call(holder.querySelectorAll('[data-roving]'));
-  var i = items.indexOf(t);
-  if(i < 0 || !items.length) return;
+  var cells = Array.prototype.slice.call(cell.parentNode.querySelectorAll('.qnav-cell[data-qid]'));
+  var i = cells.indexOf(cell);
+  if(i < 0 || !cells.length) return;
   e.preventDefault();
   var n;
   if(e.key === 'Home') n = 0;
-  else if(e.key === 'End') n = items.length - 1;
-  else n = (i + ((e.key==='ArrowRight'||e.key==='ArrowDown') ? 1 : -1) + items.length) % items.length;
-  items.forEach(function(b, k){ b.setAttribute('tabindex', k===n ? '0' : '-1'); });
-  items[n].focus();
+  else if(e.key === 'End') n = cells.length - 1;
+  else n = (i + ((e.key==='ArrowRight'||e.key==='ArrowDown') ? 1 : -1) + cells.length) % cells.length;
+  qnavJump(cells[n].getAttribute('data-qid'));
+  try { cells[n].focus({preventScroll:true}); } catch(err) {}
 }, true);
 // 多选题：实时告诉用户「选了几项」
 function updateMultiCount(card){
@@ -1484,19 +1499,6 @@ function redoCardFrom(btn){
   if(state.mode==='wrong' || state.mode==='unanswered'){ rebuildList(); renderCurrent(); }
   updateStats();
 }
-// 结果条出现后确保可见（避免被吸顶栏压住）
-function flashResult(card){
-  if(!card) return;
-  var res = card.querySelector('.q-result');
-  if(!res || !res.innerHTML) return;
-  var rect = res.getBoundingClientRect();
-  if(rect.bottom <= window.innerHeight && rect.top >= stickyTopH()) return;   // 已在视口内，不打扰
-  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var y = rect.top + window.pageYOffset - stickyTopH() - 8;
-  try { window.scrollTo({ top: Math.max(0,y), behavior: reduce ? 'auto' : 'smooth' }); }
-  catch(e){ window.scrollTo(0, Math.max(0,y)); }
-}
-
 // ── 右侧题号导航（答案卡）：随筛选重编号、点号跳题 ──
 var navList = [];      // 去AI × 题型 × 章节 命中集合（固定顺序；随机模式下按当前打乱序）
 var navById = {};      // qid -> 题
@@ -2092,6 +2094,7 @@ function beginExam(){
   var m = mb ? parseInt(mb.dataset.m, 10) : 20;
   var pool = shuffle(examPool().slice()).slice(0, n);
   if(!pool.length) return;
+  leaveFast();        // 从「极速刷题」直接开考时先退出整页模式，否则整页卡片和考试叠在一起
   exam.list = pool;
   exam.set = {};
   pool.forEach(function(q){ exam.set[q.id] = true; });
@@ -2118,7 +2121,10 @@ function tickExam(){
   exam.left = Math.max(0, exam.left - 1);
   var done = examAnswered();
   var t = document.getElementById('examTime'); if(t) t.textContent = mmss(exam.left);
-  var p = document.getElementById('examProg'); if(p) p.style.width = (exam.total ? Math.round(done/exam.total*100) : 0) + '%';
+  // 绿条表示「时间流逝」而不是答题完成度：从 0 涨到 100%，最后 1 分钟转红
+  var spent = exam.usedTotal ? (exam.usedTotal - exam.left) / exam.usedTotal : 0;
+  var p = document.getElementById('examProg');
+  if(p) p.style.width = Math.round(Math.max(0, Math.min(1, spent)) * 100) + '%';
   var u = document.getElementById('examUnanswered'); if(u) u.textContent = Math.max(0, exam.total - done);
   var strip = document.getElementById('examStrip'); if(strip) strip.classList.toggle('warn', exam.left <= 60);
   if(exam.left <= 0) submitExam();
@@ -2298,7 +2304,8 @@ document.addEventListener('keydown', function(e){
   if(rp && rp.classList.contains('show')) return;
   if(e.key==='ArrowLeft' || e.key==='ArrowUp'){ e.preventDefault(); move(-1); }
   else if(e.key==='ArrowRight' || e.key==='ArrowDown'){ e.preventDefault(); move(1); }
-  else if(e.key==='Enter'){ e.preventDefault(); move(1); }
+  // Enter 切下一题，但焦点在按钮/链接上时把 Enter 让给按钮自己（否则筛选胶囊按 Enter 会变成换题）
+  else if(e.key==='Enter' && tag!=='BUTTON' && tag!=='A'){ e.preventDefault(); move(1); }
 });
 
 // ── Tab 行：鼠标竖滚轮 → 转成横向滚动（章节名太多放不下时能滚到）──
