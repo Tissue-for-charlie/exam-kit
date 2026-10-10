@@ -84,6 +84,29 @@ def run() -> int:
                             raise RuntimeError("quiz option click did not select an answer")
                         if desktop.locator(".q-card.active.answered").count() != 1:
                             raise RuntimeError("quiz choice click did not auto-submit")
+                        # 右侧题号导航：格子数=题目数、点号切题、可折叠
+                        if desktop.locator(".qnav").count() < 1:
+                            raise RuntimeError("quiz is missing the question navigator panel")
+                        cells = desktop.locator(".qnav-cell")
+                        total_cards = desktop.locator(".q-card").count()
+                        if cells.count() != total_cards:
+                            raise RuntimeError(
+                                f"quiz navigator cells {cells.count()} != questions {total_cards}")
+                        if not desktop.evaluate("document.body.classList.contains('qnav-open')"):
+                            desktop.locator("#qnavToggle").click()
+                            desktop.wait_for_timeout(350)
+                        target = cells.nth(2)
+                        target_id = target.get_attribute("data-qid")
+                        target.click()
+                        desktop.wait_for_timeout(150)
+                        active_id = desktop.locator(".q-card.active").get_attribute("data-qid")
+                        if active_id != target_id:
+                            raise RuntimeError("quiz navigator click did not switch the active question")
+                        opened = desktop.evaluate("document.body.classList.contains('qnav-open')")
+                        desktop.locator("#qnavToggle").click()
+                        closed = desktop.evaluate("document.body.classList.contains('qnav-open')")
+                        if opened == closed:
+                            raise RuntimeError("quiz navigator toggle did not change state")
                     elif name == "graph.html":
                         svg = desktop.locator("svg#g")
                         before = svg.get_attribute("style") or ""
@@ -118,6 +141,19 @@ def run() -> int:
                         )
                         if obscures_content:
                             raise RuntimeError("quiz mobile navigation obscures active content")
+                        # 窄屏：题号导航默认收起，点把手滑出抽屉且不横向溢出
+                        if mobile.evaluate("document.body.classList.contains('qnav-open')"):
+                            raise RuntimeError("quiz navigator should start collapsed on mobile")
+                        mobile.locator("#qnavToggle").click()
+                        mobile.wait_for_timeout(450)
+                        if not mobile.evaluate("document.body.classList.contains('qnav-open')"):
+                            raise RuntimeError("quiz mobile navigator did not open")
+                        if mobile.locator(".qnav-cell").count() < 1:
+                            raise RuntimeError("quiz mobile navigator has no cells")
+                        if mobile.evaluate(
+                            "document.documentElement.scrollWidth > document.documentElement.clientWidth"
+                        ):
+                            raise RuntimeError("quiz navigator causes horizontal overflow on mobile")
             finally:
                 browser.close()
     except Exception as exc:

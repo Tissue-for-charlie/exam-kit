@@ -54,7 +54,7 @@ class ShowcaseTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         expected = {
             "outline.html": ("关系模型", "details", "自测"),
-            "quiz.html": ("第 1 题", "原题", "解析"),
+            "quiz.html": ("第 1 题", "原题", "解析", "qnav"),
             "graph.html": ("<svg", "<path", "★"),
         }
         for name, markers in expected.items():

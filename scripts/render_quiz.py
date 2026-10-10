@@ -56,6 +56,7 @@ QUIZ_CSS = """
   --wrong: #f5222d;
   --partial: #fa8c16;
   --line: #e8e8e8;
+  --qnavw: 260px;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
@@ -264,6 +265,76 @@ body.fast .main { padding-bottom: 46px; }
 .nav-fixed .nav-info { font-size: 12px; color: #999; white-space: nowrap; }
 .nav-fixed .btn { min-width: 80px; text-align: center; }
 
+/* ── 右侧题号导航面板（答案卡）── */
+.qnav {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 260;
+  width: var(--qnavw); background: #fff; border-left: 1px solid var(--line);
+  box-shadow: -2px 0 12px rgba(0,0,0,.06);
+  display: flex; flex-direction: column; overflow: hidden;
+  transform: translateX(100%); visibility: hidden;
+  transition: transform .26s cubic-bezier(.22,.61,.36,1), visibility .26s;
+}
+body.qnav-open .qnav { transform: none; visibility: visible; }
+.qnav-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); flex: none; }
+.qnav-head h2 { font-size: 14px; font-weight: 700; }
+.qnav-head .qnav-count { font-size: 12px; color: var(--muted); }
+.qnav-body { flex: 1 1 auto; overflow-y: auto; padding: 12px; scrollbar-width: thin; scrollbar-color: #d0d0d0 transparent; }
+.qnav-body::-webkit-scrollbar { width: 6px; }
+.qnav-body::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 3px; }
+.qnav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 6px; }
+.qnav-cell {
+  aspect-ratio: 1 / 1; min-height: 34px; padding: 0; line-height: 1;
+  border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; color: #444;
+  font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, border-color .15s, color .15s, transform .12s;
+}
+.qnav-cell:hover { border-color: var(--accent2); color: var(--accent2); }
+.qnav-cell:active { transform: scale(.94); }
+.qnav-cell.is-ok { background: var(--correct); border-color: var(--correct); color: #fff; }
+.qnav-cell.is-wrong { background: var(--wrong); border-color: var(--wrong); color: #fff; }
+.qnav-cell.is-current { background: var(--accent2); border-color: var(--accent2); color: #fff; box-shadow: 0 0 0 2px rgba(24,144,255,.3); }
+.qnav-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 24px 4px; }
+.qnav-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 12px; color: #666; flex: none; }
+.qnav-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.qnav-legend i { width: 13px; height: 13px; border-radius: 3px; border: 1px solid #d9d9d9; background: #fff; }
+.qnav-legend i.lg-current { background: var(--accent2); border-color: var(--accent2); }
+.qnav-legend i.lg-ok { background: var(--correct); border-color: var(--correct); }
+.qnav-legend i.lg-wrong { background: var(--wrong); border-color: var(--wrong); }
+/* 折叠把手：收起贴右缘，展开移到面板左缘 */
+.qnav-toggle {
+  position: fixed; top: 50%; right: 0; transform: translateY(-50%); z-index: 270;
+  width: 24px; height: 56px; padding: 0; border: 1px solid var(--line); border-right: none;
+  border-radius: 8px 0 0 8px; background: #fff; color: #555; cursor: pointer;
+  font-size: 13px; line-height: 1; display: flex; align-items: center; justify-content: center;
+  box-shadow: -2px 0 8px rgba(0,0,0,.08);
+  transition: right .26s cubic-bezier(.22,.61,.36,1), background .18s, color .18s;
+}
+.qnav-toggle:hover { background: #f2f8ff; color: var(--accent2); }
+.qnav-toggle:active { transform: translateY(-50%) scale(.94); }
+.qnav-overlay { display: none; }
+.qnav-flash { outline: 3px solid var(--accent2); outline-offset: 2px; }
+
+/* 宽屏：面板贴右常驻，展开时页面内容让位（不遮住题目） */
+@media (min-width: 1000px) {
+  body { transition: padding-right .26s cubic-bezier(.22,.61,.36,1); }
+  body.qnav-open { padding-right: var(--qnavw); }
+  body.qnav-open .qnav-toggle { right: var(--qnavw); }
+  body.qnav-open .nav-fixed { right: var(--qnavw); }
+}
+
+/* 窄屏：题号导航改为右侧滑出抽屉 + 遮罩 */
+@media (max-width: 999px) {
+  .qnav { width: 280px; }
+  body.qnav-open .qnav { box-shadow: 0 0 44px rgba(0,0,0,.28); }
+  .qnav-overlay {
+    display: block; position: fixed; inset: 0; z-index: 250;
+    background: rgba(0,0,0,.42); opacity: 0; pointer-events: none; transition: opacity .28s ease;
+  }
+  body.qnav-open .qnav-overlay { opacity: 1; pointer-events: auto; }
+  body.qnav-open .qnav-toggle { right: 280px; }
+}
+
 /* ── 掌握度报告（弹窗） ── */
 .report-overlay {
   display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -338,7 +409,8 @@ table.kc th { background: #fafafa; }
 /* ── 打印：全部题目 + 答案展开 ── */
 @media print {
   body { background: #fff; }
-  .header, #topBars, .report-overlay, .nav-fixed, .q-actions, .q-result { display: none !important; }
+  .header, #topBars, .report-overlay, .nav-fixed, .q-actions, .q-result,
+  .qnav, .qnav-toggle, .qnav-overlay { display: none !important; }
   .main { max-width: none; padding: 0; }
   .q-card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
   .quiz-list .q-card { display: block; }
@@ -563,6 +635,23 @@ def render(quiz: dict) -> str:
     parts.append('<div class="empty" id="empty" style="display:none">当前筛选下没有题目</div>')
     parts.append('</div>')  # main
 
+    # 右侧题号导航（答案卡）：随筛选重编号、点号跳题；窄屏为右滑抽屉
+    parts.append(
+        '<aside class="qnav" id="qnav" aria-label="题号导航">'
+        '<div class="qnav-head"><h2>题号导航</h2><span class="qnav-count" id="qnavCount"></span></div>'
+        '<div class="qnav-body"><div class="qnav-grid" id="qnavGrid"></div></div>'
+        '<div class="qnav-legend">'
+        '<span><i></i>未答</span>'
+        '<span><i class="lg-current"></i>当前</span>'
+        '<span><i class="lg-ok"></i>已答</span>'
+        '<span><i class="lg-wrong"></i>答错</span>'
+        '</div>'
+        '</aside>'
+        '<div class="qnav-overlay" id="qnavOverlay" onclick="toggleQnav(false)"></div>'
+        '<button class="qnav-toggle" id="qnavToggle" type="button" onclick="toggleQnav()" '
+        'title="题号导航" aria-label="题号导航">‹</button>'
+    )
+
     parts.append('<div class="nav-fixed"><div class="nav-inner">'
                  '<button class="btn btn-outline" onclick="move(-1)">上一题</button>'
                  '<span class="nav-info" id="navInfo">0 / 0</span>'
@@ -610,6 +699,7 @@ function toggleAi(){
   state.idx = 0;
   refresh();
   refreshTabCounts();
+  renderPanel();
 }
 function refreshTabCounts(){
   var P = aiPool();
@@ -680,6 +770,7 @@ function setType(btn){
   state.type = btn.dataset.type;
   state.idx = 0;
   refresh();
+  renderPanel();
 }
 function setChapter(btn){
   document.querySelectorAll('.chapter-nav button').forEach(function(b){b.classList.remove('active');});
@@ -687,6 +778,7 @@ function setChapter(btn){
   state.chapter = btn.dataset.chapter;
   state.idx = 0;
   refresh();
+  renderPanel();
 }
 function setMode(btn){
   document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.remove('active');});
@@ -700,6 +792,7 @@ function setMode(btn){
 // ── 极速刷题：整页滚动列出当前筛选的题，就地作答，不用点“下一题” ──
 function renderFast(){
   document.body.classList.add('fast');
+  panelPin = null;
   var list = document.getElementById('quizList');
   if(list) list.classList.add('mode-fast');
   document.querySelectorAll('.q-card').forEach(function(c){
@@ -739,6 +832,7 @@ function exportWrong(){
   if(!items.length){ alert('当前没有可导出的错题'); return; }
   var styles = Array.prototype.map.call(document.querySelectorAll('style'), function(s){return s.textContent;}).join('\n');
   var extra = '\n.quiz-top,#topBars,.mode-bar,.nav-fixed,.report-overlay,.backtop{display:none !important;}\n'
+    + '.qnav,.qnav-toggle,.qnav-overlay{display:none !important;}\n'
     + '.main{max-width:860px;margin:0 auto;padding:20px 16px 60px;}\n'
     + '.quiz-list .q-card{display:block !important;}\n'
     + '.q-card{box-shadow:none;border:1px solid #ddd;break-inside:avoid;}\n'
@@ -775,6 +869,8 @@ function exportWrong(){
 
 function renderCurrent(){
   document.querySelectorAll('.q-card').forEach(function(c){c.classList.remove('active');});
+  panelPin = null;
+  paintPanelCells();
   var empty = document.getElementById('empty');
   var info = document.getElementById('navInfo');
   if(curList.length===0){
@@ -921,7 +1017,160 @@ function updateStats(){
   document.getElementById('wrongCnt').textContent = wrong;
   var pct = objTotal?Math.round(done/objTotal*100):0;
   document.getElementById('progressFill').style.width = pct + '%';
+  paintPanelCells();
 }
+
+// ── 右侧题号导航（答案卡）：随筛选重编号、点号跳题 ──
+var navList = [];      // 去AI × 题型 × 章节 命中集合（页面固定顺序，不含错题本/未作答/随机）
+var navById = {};      // qid -> 题
+var QNAV_KEY = 'examkit.quiz.qnav';
+
+function navHit(q){
+  if(state.type==='obj'){ if(SUBJ[q.type]) return false; }
+  else if(state.type==='subj'){ if(!SUBJ[q.type]) return false; }
+  else if(state.type!=='all' && q.type!==state.type) return false;
+  if(state.chapter!=='all' && q.chapterId!==state.chapter) return false;
+  return true;
+}
+function navCellClass(q){
+  var cls = 'qnav-cell';
+  if(submitted[q.id]){ cls += (SUBJ[q.type] || results[q.id]) ? ' is-ok' : ' is-wrong'; }
+  return cls;
+}
+// 顶栏（吸顶）高度：跳转/当前格判定都要避开它
+function stickyTopH(){
+  var h = 0;
+  // 极速刷题整块 quiz-top 吸顶；单题模式只有 header 吸顶
+  ['.quiz-top', '.header'].forEach(function(sel){
+    var el = document.querySelector(sel); if(!el) return;
+    var r = el.getBoundingClientRect();
+    if(r.bottom > 0 && r.bottom > h) h = r.bottom;   // 吸顶时其底边即遮挡高度
+  });
+  return h + 10;
+}
+function scrollToCard(card){
+  if(!card) return;
+  var y = card.getBoundingClientRect().top + window.pageYOffset - stickyTopH();
+  window.scrollTo(0, Math.max(0, y));
+}
+// 重建面板格子 + 同步卡片题号（按当前筛选连续编号）
+function renderPanel(){
+  panelPin = null;
+  navList = aiPool().filter(navHit);
+  navById = {};
+  navList.forEach(function(q){ navById[q.id] = q; });
+  var cnt = document.getElementById('qnavCount');
+  if(cnt) cnt.textContent = navList.length ? ('共 ' + navList.length + ' 题') : '';
+  var grid = document.getElementById('qnavGrid');
+  if(grid){
+    grid.innerHTML = navList.length
+      ? navList.map(function(q,i){
+          return '<button type="button" class="'+navCellClass(q)+'" data-qid="'+q.id+'">'+(i+1)+'</button>';
+        }).join('')
+      : '<div class="qnav-empty">当前筛选下没有题目</div>';
+  }
+  document.querySelectorAll('.q-card').forEach(function(c){
+    var el = c.querySelector('.q-num'); if(!el) return;
+    var q = navById[c.getAttribute('data-qid')];
+    el.textContent = q ? ('第 ' + (navList.indexOf(q) + 1) + ' 题') : '';
+  });
+  paintPanelCells();
+}
+function currentPanelQid(){
+  if(state.mode==='fast'){
+    if(panelPin) return panelPin;             // 刚点过号：钉住目标，等用户自己滚动再交还
+    var top0 = stickyTopH();
+    var cards = document.querySelectorAll('.q-card.fastShow');
+    if(!cards.length) return null;
+    // scrollspy：最后一个越过顶栏线的题板 = 当前题
+    var best = cards[0].getAttribute('data-qid');
+    cards.forEach(function(c){
+      var r = c.getBoundingClientRect();
+      if(r.top - top0 <= 1) best = c.getAttribute('data-qid');
+    });
+    return best;
+  }
+  var q = curQ();
+  return q ? q.id : null;
+}
+// 只刷新格子状态/当前态（不重建，保持点击手感）
+function paintPanelCells(){
+  var grid = document.getElementById('qnavGrid'); if(!grid) return;
+  var curId = currentPanelQid();
+  grid.querySelectorAll('.qnav-cell[data-qid]').forEach(function(c){
+    var q = navById[c.getAttribute('data-qid')]; if(!q) return;
+    c.className = navCellClass(q) + (q.id===curId ? ' is-current' : '');
+  });
+}
+function qnavJump(qid){
+  // 极速刷题：整页已列出当前筛选的题，直接滚动定位（curList 此时可能仍是上一个模式留下的，不能拿它判断）
+  if(state.mode==='fast'){
+    var fc = qCard({id:qid});
+    panelPin = qid;
+    scrollToCard(fc);
+    if(fc){
+      fc.classList.add('qnav-flash');
+      setTimeout(function(){ fc.classList.remove('qnav-flash'); }, 900);
+    }
+    paintPanelCells();
+    return;
+  }
+  var idx = -1;
+  for(var i=0;i<curList.length;i++){ if(curList[i].id===qid){ idx=i; break; } }
+  if(idx < 0){
+    // 当前刷题模式（错题本/未作答等）不含该题 → 切回「全部题目」再跳
+    state.mode = 'all';
+    document.querySelectorAll('.mode-btn').forEach(function(b){
+      b.classList.toggle('active', b.dataset.mode==='all');
+    });
+    rebuildList();
+    for(var j=0;j<curList.length;j++){ if(curList[j].id===qid){ idx=j; break; } }
+  }
+  if(idx < 0) return;
+  state.idx = idx;
+  renderCurrent();
+  scrollToCard(qCard({id:qid}));
+  paintPanelCells();
+}
+function qnavSet(open, persist){
+  document.body.classList.toggle('qnav-open', !!open);
+  var btn = document.getElementById('qnavToggle');
+  if(btn) btn.textContent = open ? '›' : '‹';
+  if(persist !== false){ try{ localStorage.setItem(QNAV_KEY, open ? 'open' : 'closed'); }catch(e){} }
+}
+function toggleQnav(force){
+  var open = (typeof force === 'boolean') ? force : !document.body.classList.contains('qnav-open');
+  qnavSet(open);
+}
+function qnavInit(){
+  var saved = null;
+  try{ saved = localStorage.getItem(QNAV_KEY); }catch(e){}
+  qnavSet(saved ? (saved==='open') : (window.innerWidth >= 1000), false);
+}
+// 极速刷题滚动时同步「当前格」
+var panelRaf = null;
+var panelPin = null;       // 点号跳转后钉住的目标，用户自己滚动即释放
+window.addEventListener('scroll', function(){
+  if(state.mode!=='fast' || panelRaf) return;
+  panelRaf = requestAnimationFrame(function(){ panelRaf = null; paintPanelCells(); });
+}, {passive:true});
+function releasePanelPin(e){
+  if(!panelPin) return;
+  if(e && e.target && e.target.closest && e.target.closest('.qnav')) return;  // 滚面板本身不算
+  panelPin = null;
+  paintPanelCells();
+}
+window.addEventListener('wheel', releasePanelPin, {passive:true});
+window.addEventListener('touchstart', releasePanelPin, {passive:true});
+window.addEventListener('touchmove', releasePanelPin, {passive:true});
+document.addEventListener('keydown', function(e){
+  if(/^(ArrowUp|ArrowDown|PageUp|PageDown|Home|End| )$/.test(e.key)) releasePanelPin(null);
+});
+// 点格子跳题（事件委托，兼容面板重建）
+document.addEventListener('click', function(e){
+  var cell = e.target && e.target.closest ? e.target.closest('.qnav-cell') : null;
+  if(cell) qnavJump(cell.getAttribute('data-qid'));
+});
 
 function openReport(){
   renderReport();
@@ -1029,6 +1278,8 @@ refreshTabCounts();
 rebuildList();
 renderCurrent();
 updateStats();
+renderPanel();
+qnavInit();
 """
 
 
