@@ -633,7 +633,7 @@ body.exam-on .mode-btn.exam-entry { display: none; }
    一圈刚好压住原边框，不会像 offset 正数那样变成「两道线」；box-shadow 一并清掉避免出现叠加的光环 */
 .btn:focus-visible, .option:focus-visible, .qnav-cell:focus-visible, .top-btn:focus-visible,
 .toggle-top-btn:focus-visible, .nav button:focus-visible, .mode-btn:focus-visible,
-.fill-input:focus-visible, .subj-input:focus-visible, .search-input:focus-visible,
+.fill-input:focus-visible, .subj-input:focus-visible, .search-input:focus-visible, .exam-min:focus-visible,
 .star-btn:focus-visible, .guess-btn:focus-visible, .report-close:focus-visible,
 .filter-toggle:focus-visible, .qnav-toggle:focus-visible, .backtop:focus-visible,
 .menu button:focus-visible, .rep-cell:focus-visible {
@@ -1696,12 +1696,13 @@ function openReport(){
 function closeReport(){
   document.getElementById('reportOverlay').classList.remove('show');
 }
-function toggleTopBars(){
+function toggleTopBars(force){
   var bars = document.getElementById('topBars');
   var btn = document.getElementById('toggleTopBtn');
-  bars.classList.toggle('hidden');
-  btn.classList.toggle('collapsed');
-  document.body.classList.toggle('topbars-hidden', bars.classList.contains('hidden'));
+  var hidden = (typeof force === 'boolean') ? !force : !bars.classList.contains('hidden');
+  bars.classList.toggle('hidden', hidden);
+  btn.classList.toggle('collapsed', hidden);
+  document.body.classList.toggle('topbars-hidden', hidden);
   updateFilterSummary();
 }
 function renderReport(){
@@ -2061,7 +2062,9 @@ function exportPaperWord(withAnswers){
 }
 
 // ── 模拟考试：限时、不即时判分，交卷后统一出分 ──
-var exam = {on:false, total:0, left:0, timer:null, list:[], set:{}};
+var exam = {on:false, total:0, left:0, timer:null, list:[], set:{}, barsHidden:false};
+// 考试结束把先前自动收起的顶部栏还原（用户考试前就是收起的则不动）
+function examRestoreBars(){ if(exam && !exam.barsHidden) toggleTopBars(true); }
 function mmss(s){ var m = Math.floor(s/60), r = s%60; return (m<10?'0':'')+m+':'+(r<10?'0':'')+r; }
 function examAnswered(){
   var n = 0;
@@ -2177,7 +2180,9 @@ function beginExam(){
   state.mode = 'exam';
   state.idx = 0;
   document.querySelectorAll('.mode-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.mode==='all'); });
+  exam.barsHidden = document.body.classList.contains('topbars-hidden');   // 记住用户原来的开合状态
   document.body.classList.add('exam-on');
+  toggleTopBars(false);   // 开考后整块「统计 + 筛选」收起，只留计时条与卷面
   rebuildList();
   renderCurrent();
   renderPanel();
@@ -2220,6 +2225,7 @@ function submitExam(){
   var used = exam.usedTotal - exam.left;
   exam.on = false;
   document.body.classList.remove('exam-on');
+  examRestoreBars();
   var strip = document.getElementById('examStrip'); if(strip) strip.classList.remove('warn');
   state.mode = 'all'; state.idx = 0;
   document.querySelectorAll('.mode-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.mode==='all'); });
@@ -2235,6 +2241,7 @@ function quitExam(){
   stopExamTimer();
   exam.on = false;
   document.body.classList.remove('exam-on');
+  examRestoreBars();
   var strip = document.getElementById('examStrip'); if(strip) strip.classList.remove('warn');
   state.mode = 'all'; state.idx = 0;
   document.querySelectorAll('.mode-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.mode==='all'); });
