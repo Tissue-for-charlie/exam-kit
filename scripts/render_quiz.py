@@ -166,9 +166,11 @@ body.fast .quiz-top { position: sticky; top: 0; z-index: 120; background: #fff; 
 }
 .nav-row.scrollable:not(.at-end)::after, .mode-bar.scrollable:not(.at-end)::after { opacity: 1; }
 
-/* ── 模式选择 ── */
-.mode-bar { position: relative; background: #fff; padding: 7px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; font-size: 13px; flex-wrap: wrap; }
-.mode-bar .mode-label { font-size: 11px; letter-spacing: .08em; color: var(--muted); }
+/* ── 模式选择（与题型/章节同一套结构：左侧固定分组标签 + 右侧自己横滚的胶囊条；
+      标签在滚动容器外，所以横滚时不会跟着「刷题模式」一起被滚走）── */
+.mode-bar { position: relative; display: flex; align-items: center; background: #fff; border-bottom: 1px solid var(--line); font-size: 13px; }
+.mode-nav { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 7px 20px 7px 0; overflow-x: auto; white-space: nowrap; scrollbar-width: none; -ms-overflow-style: none; }
+.mode-nav::-webkit-scrollbar { display: none; }
 .mode-btn { padding: 6px 14px; border-radius: var(--r-pill); font-size: 12.5px; cursor: pointer; border: 1px solid var(--line); background: #fafbfc; color: var(--ink-2); transition: background .14s var(--ease), border-color .14s var(--ease), color .14s var(--ease); }
 .mode-btn:hover { border-color: var(--accent2); color: var(--accent2); }
 .mode-btn.active { background: #e8f0fb; border-color: var(--accent2); color: var(--accent2); font-weight: 600; }
@@ -464,6 +466,7 @@ table.kc th { background: var(--line-2); }
 .menu {
   display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 320;
   background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); min-width: 208px;
+  max-width: calc(100vw - 16px);
   box-shadow: 0 12px 34px rgba(0,0,0,.2); padding: 6px; text-align: left;
 }
 body.menu-open .menu { display: block; }
@@ -580,10 +583,9 @@ body.exam-on .mode-btn.exam-entry { display: none; }
   .nav-label { padding-left: 14px; padding-right: 6px; }
   .nav { padding: 8px 10px; gap: 6px; }
   .nav button { padding: 8px 14px; }
-  /* 模式条窄屏不换行，改成单行横滚（换行会吃掉半屏竖向空间，也和题型/章节行不一致） */
-  .mode-bar { padding: 8px 14px; gap: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
-  .mode-bar::-webkit-scrollbar { display: none; }
-  .mode-btn, .mode-bar .mode-label { flex: 0 0 auto; white-space: nowrap; }
+  /* 模式条窄屏与题型/章节同构：标签固定，按钮条自己横滚 */
+  .mode-nav { padding: 8px 14px 8px 0; gap: 6px; }
+  .mode-btn { flex: 0 0 auto; white-space: nowrap; }
   .mode-btn { padding: 8px 14px; }
   .top-btn, .toggle-top-btn { padding: 7px 10px; }
   .qnav-cell { min-height: 40px; }
@@ -612,7 +614,7 @@ body.exam-on .mode-btn.exam-entry { display: none; }
   .stat-bar { gap: 14px; padding: 8px 14px; }
   .nav-label { padding-left: 16px; }
   .nav button { padding: 8px 14px; }
-  .mode-bar { padding: 8px 14px; }
+  .mode-nav { padding: 8px 14px 8px 0; }
   .mode-btn { padding: 8px 14px; }
   .qnav-cell { min-height: 38px; }
   .main { padding: 14px 12px 96px; }
@@ -901,7 +903,8 @@ def render(quiz: dict) -> str:
         f'<div class="nav-row"><span class="nav-label">题型</span><div class="nav">{"".join(type_tabs)}</div></div>',
         f'<div class="nav-row"><span class="nav-label">章节</span><div class="nav chapter-nav">{"".join(chapter_tabs)}</div></div>',
         '<div class="mode-bar">'
-        '<span class="mode-label">刷题模式</span>'
+        '<span class="nav-label">刷题模式</span>'
+        '<div class="mode-nav">'
         '<button class="mode-btn active" data-mode="all" onclick="setMode(this)">全部题目</button>'
         '<button class="mode-btn" data-mode="random" onclick="setMode(this)">随机顺序</button>'
         '<button class="mode-btn" data-mode="fast" onclick="setMode(this)">极速刷题</button>'
@@ -910,6 +913,7 @@ def render(quiz: dict) -> str:
         '<button class="mode-btn" data-mode="star" onclick="setMode(this)">⭐ 标记<span class="cnt" id="starCnt">0</span></button>'
         '<span class="spacer"></span>'
         '<button class="mode-btn exam-entry" type="button" onclick="openExamSetup()" title="限时模拟考试：交卷后统一判分">模拟考试</button>'
+        '</div>'
         '</div>',
         '</div>',
         '</div>',
@@ -1436,7 +1440,7 @@ function resetFilters(){
 // ── 筛选行溢出提示：能横滚时右缘渐隐，滚到最右端隐藏 ──
 function updateNavOverflow(){
   document.querySelectorAll('.nav-row, .mode-bar').forEach(function(row){
-    var nav = row.classList.contains('nav-row') ? row.querySelector('.nav') : row;
+    var nav = row.querySelector('.nav, .mode-nav') || row;
     if(!nav) return;
     var over = nav.scrollWidth > nav.clientWidth + 1;
     row.classList.toggle('scrollable', over);
@@ -1850,6 +1854,16 @@ function toggleMenu(force){
   document.body.classList.toggle('menu-open', open);
   var b = document.getElementById('paperBtn');
   if(b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if(open) placeMenu();
+}
+// 窄屏下「导出」按钮离左缘不到一个菜单宽，右下对齐会顶出视口：打开后按视口夹一下
+function placeMenu(){
+  var b = document.getElementById('paperBtn'); if(!b || !b.parentNode) return;
+  var menu = b.parentNode.querySelector('.menu'); if(!menu) return;
+  menu.style.right = '';
+  var pad = 8, r = menu.getBoundingClientRect();
+  if(r.left < pad) menu.style.right = (-(pad - r.left)) + 'px';
+  else if(r.right > window.innerWidth - pad) menu.style.right = (r.right - (window.innerWidth - pad)) + 'px';
 }
 document.addEventListener('click', function(e){
   if(e.target && e.target.closest && e.target.closest('.menu-wrap')) return;
@@ -2387,7 +2401,7 @@ document.addEventListener('keydown', function(e){
 });
 
 // ── Tab 行：鼠标竖滚轮 → 转成横向滚动（章节名太多放不下时能滚到）──
-document.querySelectorAll('.nav').forEach(function(nav){
+document.querySelectorAll('.nav, .mode-nav').forEach(function(nav){
   nav.addEventListener('wheel', function(e){
     if(e.ctrlKey) return;                            // Ctrl+滚轮=页面缩放，不劫持
     if(nav.scrollWidth <= nav.clientWidth + 1) return; // 没有横向溢出就交还页面正常滚动
@@ -2408,7 +2422,8 @@ qnavInit();
 updateFilterSummary();
 updateNavOverflow();
 window.addEventListener('resize', updateNavOverflow);
-document.querySelectorAll('.nav').forEach(function(nav){
+window.addEventListener('resize', function(){ if(document.body.classList.contains('menu-open')) placeMenu(); });
+document.querySelectorAll('.nav, .mode-nav').forEach(function(nav){
   nav.addEventListener('scroll', updateNavOverflow, {passive:true});
 });
 
