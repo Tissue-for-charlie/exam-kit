@@ -539,6 +539,16 @@ body.exam-on .mode-btn.exam-entry { display: none; }
 .mode-btn.exam-entry { border-color: var(--accent2); color: var(--accent2); font-weight: 600; }
 .mode-btn.exam-entry:hover { background: #e8f0fb; }
 
+/* 模拟考试设置：时长可自定义（输入框是唯一真源，档位按钮只做快捷填充） */
+.exam-min-row { display: flex; align-items: center; gap: 8px; padding: 0 0 16px; font-size: 12px; color: var(--muted); }
+.exam-min {
+  flex: none; width: 68px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: #fff; color: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; text-align: center;
+}
+.exam-min:focus { border-color: var(--accent2); }
+.exam-min-unit { flex: none; }
+.report-actions { display: flex; gap: 10px; margin-top: 4px; }
+
 /* 报告里的章节完成度 */
 .rep-sub { font-size: 13px; font-weight: 600; margin: 18px 0 4px; color: var(--ink-2); }
 .rep-sub:first-child { margin-top: 0; }
@@ -589,6 +599,7 @@ body.exam-on .mode-btn.exam-entry { display: none; }
   .report-body { padding: 12px 14px 18px; }
   /* 输入框字号 ≥16 防 iOS 自动缩放；不超容器宽、页面不横向溢出 */
   .fill-input, .subj-input { font-size: 16px; max-width: 100%; }
+  .exam-min { font-size: 16px; }
   body { overflow-x: hidden; }
 }
 
@@ -606,6 +617,7 @@ body.exam-on .mode-btn.exam-entry { display: none; }
   .qnav-cell { min-height: 38px; }
   .main { padding: 14px 12px 96px; }
   .fill-input, .subj-input { font-size: 16px; max-width: 100%; }
+  .exam-min { font-size: 16px; }
   .subj-input { min-height: 116px; }
   .answer-static { font-size: 14px; }
   .report-card { max-height: 92vh; }
@@ -1475,12 +1487,9 @@ function markAnsweredCard(card){
   var sb = card.querySelector('.q-actions .btn-primary'); if(sb) sb.style.display = 'none';
   var rb = card.querySelector('.redo-btn'); if(rb) rb.style.display = '';
 }
-// 重做本题：撤销该题记录，回到未作答态
-function redoCardFrom(btn){
-  var card = btn && btn.closest ? btn.closest('.q-card') : null;
+// 把一张卡恢复成「未作答」的样子（重做本题 / 开考前清空作答共用；不动全局记录）
+function resetCardState(card){
   if(!card) return;
-  var qid = card.getAttribute('data-qid');
-  delete submitted[qid]; delete results[qid]; delete wrongSet[qid];
   card.classList.remove('answered');
   card.querySelectorAll('.option').forEach(function(o){
     o.classList.remove('selected','correct','wrong','missed','disabled');
@@ -1496,6 +1505,14 @@ function redoCardFrom(btn){
   var rb = card.querySelector('.redo-btn'); if(rb) rb.style.display='none';
   var sb = card.querySelector('.q-actions .btn-primary'); if(sb) sb.style.display='';
   updateMultiCount(card);
+}
+// 重做本题：撤销该题记录，回到未作答态
+function redoCardFrom(btn){
+  var card = btn && btn.closest ? btn.closest('.q-card') : null;
+  if(!card) return;
+  var qid = card.getAttribute('data-qid');
+  delete submitted[qid]; delete results[qid]; delete wrongSet[qid]; delete guessSet[qid];
+  resetCardState(card);
   if(state.mode==='wrong' || state.mode==='unanswered'){ rebuildList(); renderCurrent(); }
   updateStats();
 }
@@ -2065,33 +2082,87 @@ function pickExamOpt(btn){
   btn.parentNode.querySelectorAll('button').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
 }
+// 时长档位：点档位就把数值写进自定义输入框（输入框才是唯一真源）
+function pickExamTime(btn){
+  pickExamOpt(btn);
+  var inp = document.getElementById('examMin');
+  if(inp) inp.value = btn.dataset.m;
+}
+// 自定义时长：输入即同步档位高亮；失焦（commit）时把非法值夹回 1–180 分钟
+function onExamMin(inp, commit){
+  var v = parseInt(inp.value, 10);
+  if(commit){
+    if(!(v > 0)) v = 20;
+    v = Math.max(1, Math.min(180, v));
+    inp.value = v;
+  }
+  document.querySelectorAll('#reportBody button[data-m]').forEach(function(b){
+    b.classList.toggle('active', parseInt(b.dataset.m, 10) === v);
+  });
+}
+// 是否已有作答痕迹：提交过、选过选项、填过空，任意一种都算
+function hasDraftAnswers(){
+  for(var k in submitted){ if(submitted[k]) return true; }
+  var cards = document.querySelectorAll('.q-card');
+  for(var i=0;i<cards.length;i++){
+    if(cards[i].querySelector('.option.selected')) return true;
+    var fields = cards[i].querySelectorAll('input.fill-input, textarea.subj-input');
+    for(var j=0;j<fields.length;j++){ if(fields[j].value.trim() !== '') return true; }
+  }
+  return false;
+}
+// 清空全部作答（开考前确认用）：记录、配色、输入值、结果条、错题与蒙对标记一起归零
+function clearAllAnswers(startExam){
+  submitted = {}; results = {}; wrongSet = {}; guessSet = {};
+  ALL.forEach(function(q){ resetCardState(qCard(q)); });
+  if(state.mode==='wrong' || state.mode==='unanswered'){ state.idx = 0; rebuildList(); renderCurrent(); }
+  updateStats();
+  renderPanel();
+  if(startExam) openExamSetup(); else closeReport();
+}
+function renderExamSetup(pool){
+  var sizes = [10, 20, 30].filter(function(n){ return n < pool.length; });
+  sizes.push(pool.length);
+  var times = [10, 15, 20, 30, 45];
+  document.getElementById('reportBody').innerHTML =
+      '<div class="report-empty">可用题目 <b>' + pool.length + '</b> 道。考试中不显示对错与解析，交卷后统一判分并给出成绩。</div>'
+    + '<div class="nav-row" style="border:none;padding:12px 0 4px"><span class="nav-label" style="padding-left:0">题量</span><div class="nav" style="padding:0">'
+    + sizes.map(function(n, i){ return '<button data-n="'+n+'" class="'+(i===sizes.length-1?'active':'')+'" onclick="pickExamOpt(this)">'+n+' 题</button>'; }).join('')
+    + '</div></div>'
+    + '<div class="nav-row" style="border:none;padding:0 0 2px"><span class="nav-label" style="padding-left:0">时长</span><div class="nav" style="padding:0">'
+    + times.map(function(m){ return '<button data-m="'+m+'" class="'+(m===20?'active':'')+'" onclick="pickExamTime(this)">'+m+' 分钟</button>'; }).join('')
+    + '</div></div>'
+    + '<div class="exam-min-row"><label for="examMin">自定义时长</label>'
+    + '<input class="exam-min" id="examMin" type="number" min="1" max="180" step="1" inputmode="numeric" value="20" '
+    + 'aria-label="自定义考试时长（分钟）" oninput="onExamMin(this)" onchange="onExamMin(this, true)">'
+    + '<span class="exam-min-unit">分钟（1–180）</span></div>'
+    + '<div class="report-actions"><button class="btn btn-primary" type="button" onclick="beginExam()">开始考试</button>'
+    + '<button class="btn btn-outline" type="button" onclick="closeReport()">取消</button></div>';
+}
 function openExamSetup(){
+  qnavSet(false, false);   // 打开考试设置就把右侧题号面板收起来，别挡着卷面（不覆盖用户存的开关偏好）
   var pool = examPool();
   document.getElementById('reportTitle').textContent = '📝 模拟考试';
   var body = document.getElementById('reportBody');
   if(!pool.length){
     body.innerHTML = '<div class="report-empty">当前筛选（题型 / 章节 / 搜索）下没有可考的客观题，先调整筛选再开始。</div>';
+  } else if(hasDraftAnswers()){
+    // 已有作答：先问清楚要不要清空，避免一开考就把前面的做题记录冲掉
+    body.innerHTML = '<div class="report-empty">检测到你已经作答过一些题目。开始模拟考试会清空全部作答、错题与得分，从零重新计时。</div>'
+      + '<div class="report-actions"><button class="btn btn-primary" type="button" onclick="clearAllAnswers(true)">清空并开始</button>'
+      + '<button class="btn btn-outline" type="button" onclick="closeReport()">取消</button></div>';
   } else {
-    var sizes = [10, 20, 30].filter(function(n){ return n < pool.length; });
-    sizes.push(pool.length);
-    var times = [10, 15, 20, 30, 45];
-    body.innerHTML = '<div class="report-empty">可用题目 <b>' + pool.length + '</b> 道。考试中不显示对错与解析，交卷后统一判分并给出成绩。</div>'
-      + '<div class="nav-row" style="border:none;padding:12px 0 4px"><span class="nav-label" style="padding-left:0">题量</span><div class="nav" style="padding:0">'
-      + sizes.map(function(n, i){ return '<button data-n="'+n+'" class="'+(i===sizes.length-1?'active':'')+'" onclick="pickExamOpt(this)">'+n+' 题</button>'; }).join('')
-      + '</div></div>'
-      + '<div class="nav-row" style="border:none;padding:0 0 14px"><span class="nav-label" style="padding-left:0">时长</span><div class="nav" style="padding:0">'
-      + times.map(function(m, i){ return '<button data-m="'+m+'" class="'+(i===2?'active':'')+'" onclick="pickExamOpt(this)">'+m+' 分钟</button>'; }).join('')
-      + '</div></div>'
-      + '<div style="display:flex;gap:10px"><button class="btn btn-primary" onclick="beginExam()">开始考试</button>'
-      + '<button class="btn btn-outline" onclick="closeReport()">取消</button></div>';
+    renderExamSetup(pool);
   }
   document.getElementById('reportOverlay').classList.add('show');
 }
 function beginExam(){
   var nb = document.querySelector('#reportBody button[data-n].active');
-  var mb = document.querySelector('#reportBody button[data-m].active');
   var n = nb ? parseInt(nb.dataset.n, 10) : 10;
-  var m = mb ? parseInt(mb.dataset.m, 10) : 20;
+  var mi = document.getElementById('examMin');
+  var m = mi ? parseInt(mi.value, 10) : 20;
+  if(!(m > 0)) m = 20;
+  m = Math.max(1, Math.min(180, m));
   var pool = shuffle(examPool().slice()).slice(0, n);
   if(!pool.length) return;
   leaveFast();        // 从「极速刷题」直接开考时先退出整页模式，否则整页卡片和考试叠在一起
