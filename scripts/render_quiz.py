@@ -90,6 +90,16 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .header-titles { min-width: 0; flex: 1 1 auto; }
 .header h1 { font-size: 20px; font-weight: 700; line-height: 1.3; }
 .header .sub { font-size: 12px; opacity: .72; margin-top: 2px; }
+/* 折叠顶部栏后仍能读到「现在筛的是什么」，别让用户失去方位 */
+.filter-badge {
+  display: none; margin-top: 6px; font-size: 11.5px; line-height: 1.5;
+  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22);
+  color: #fff; padding: 2px 10px; border-radius: var(--r-pill);
+}
+body.topbars-hidden .filter-badge { display: inline-flex; align-items: center; gap: 6px; }
+/* 常驻完成度细线：滚动到哪都能看到「做完了多少」 */
+.header-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,.12); }
+.header-progress i { display: block; height: 100%; width: 0; background: #5b9bff; transition: width .28s var(--ease); }
 .toggle-top-btn {
   background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.25); color: #fff;
   border-radius: var(--r-sm); padding: 6px 10px; cursor: pointer; font-size: 13px; line-height: 1.4;
@@ -152,15 +162,15 @@ body.fast .quiz-top { position: sticky; top: 0; z-index: 120; background: #fff; 
 .nav button .cnt { font-size: 11px; color: var(--muted); margin-left: 4px; }
 .nav button.active .cnt { color: rgba(255,255,255,.78); }
 /* 横向还能滚动时右缘渐隐，提示「后面还有」 */
-.nav-row::after {
+.nav-row::after, .mode-bar::after {
   content: ''; position: absolute; top: 0; right: 0; bottom: 1px; width: 28px; pointer-events: none;
   background: linear-gradient(to right, rgba(255,255,255,0), #fff 72%);
   opacity: 0; transition: opacity .18s var(--ease);
 }
-.nav-row.scrollable:not(.at-end)::after { opacity: 1; }
+.nav-row.scrollable:not(.at-end)::after, .mode-bar.scrollable:not(.at-end)::after { opacity: 1; }
 
 /* ── 模式选择 ── */
-.mode-bar { background: #fff; padding: 7px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; font-size: 13px; flex-wrap: wrap; }
+.mode-bar { position: relative; background: #fff; padding: 7px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; font-size: 13px; flex-wrap: wrap; }
 .mode-bar .mode-label { font-size: 11px; letter-spacing: .08em; color: var(--muted); }
 .mode-btn { padding: 6px 14px; border-radius: var(--r-pill); font-size: 12.5px; cursor: pointer; border: 1px solid var(--line); background: #fafbfc; color: var(--ink-2); transition: background .14s var(--ease), border-color .14s var(--ease), color .14s var(--ease); }
 .mode-btn:hover { border-color: var(--accent2); color: var(--accent2); }
@@ -218,6 +228,7 @@ body.fast .main { padding-bottom: 46px; }
   font-size: 15px; line-height: 1.5; user-select: none;
 }
 .option:hover { border-color: var(--accent2); background: #f8fafc; }
+.option:active { background: #f1f5fb; }
 .option:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .option input { display: none; }
 .option .opt-key {
@@ -263,6 +274,14 @@ body.fast .main { padding-bottom: 46px; }
 /* 操作区 */
 .q-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
 .auto-hint { font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
+/* 单题视图的「提交答案」在底部固定栏已有一份，卡片内这份只在极速刷题时保留，避免同屏两个同名按钮 */
+body:not(.fast) .quiz-list .q-card .q-actions .btn-primary { display: none; }
+/* 未作答就提交：就地提示，不用 alert 打断 */
+.inline-hint {
+  display: none; margin-top: 12px; padding: 8px 12px; border-radius: var(--r-sm);
+  background: #fdf3e3; color: #7d5c10; font-size: 13px; border-left: 3px solid var(--partial);
+}
+.inline-hint.show { display: block; }
 .btn {
   padding: 9px 22px; border-radius: var(--r-sm); font-size: 14px; cursor: pointer; border: none; font-weight: 600;
   transition: background .14s var(--ease), border-color .14s var(--ease), color .14s var(--ease), transform .12s var(--ease);
@@ -278,7 +297,7 @@ body.fast .main { padding-bottom: 46px; }
 
 /* 判分结果条：答完第一眼要看的就是它，所以「判定」居左、得分居右 */
 .q-result { display: none; margin-top: 14px; padding: 10px 14px; border-radius: var(--r-sm); font-size: 14px; font-weight: 600; }
-.q-result.ok, .q-result.bad { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.q-result.ok, .q-result.bad { display: flex; align-items: center; justify-content: space-between; gap: 10px; animation: riseIn .22s var(--ease); }
 .q-result.ok { background: #edf6ee; color: var(--correct); }
 .q-result.bad { background: #fbeaea; color: var(--wrong); }
 .q-result .pts { font-weight: 400; margin-left: 6px; }
@@ -288,7 +307,8 @@ body.fast .main { padding-bottom: 46px; }
   display: none; margin-top: 14px; padding: 14px 16px; border-radius: var(--r-sm);
   background: var(--line-2); border-left: 3px solid var(--accent2); font-size: 14px; line-height: 1.75;
 }
-.answer-static.show { display: block; }
+.answer-static.show { display: block; animation: riseIn .26s var(--ease); }
+@keyframes riseIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .as-ans { font-weight: 600; color: var(--ink); }
 .as-ans .v { color: var(--correct); }
 .as-exp { margin-top: 6px; }
@@ -401,6 +421,7 @@ body.qnav-open .qnav { transform: none; visibility: visible; }
 .report-body { padding: 16px 22px 22px; overflow-y: auto; }
 .score-box { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
 .score-box .ok { color: var(--correct); }
+.report-empty { color: var(--muted); }
 table.kc { width: 100%; border-collapse: collapse; margin-top: 8px; }
 table.kc th, table.kc td { border: 1px solid var(--line); padding: 8px 10px; font-size: 13.5px; text-align: left; }
 table.kc th { background: var(--line-2); }
@@ -437,7 +458,8 @@ table.kc th { background: var(--line-2); }
   .qnav-cell { min-height: 40px; }
   .nav-fixed { padding: 8px 10px; }
   .nav-fixed .nav-inner { gap: 6px; }
-  .nav-fixed .btn { min-width: 88px; padding: 10px 8px; font-size: 13.5px; }
+  /* 三键等宽均分，别把中间题号挤没；题号本身已在顶栏进度里 */
+  .nav-fixed .btn { flex: 1 1 0; min-width: 0; padding: 10px 6px; font-size: 13.5px; }
   .nav-fixed .nav-info { font-size: 11px; }
   .report-overlay { padding: 10px; }
   .report-card { max-height: 90vh; border-radius: 14px; }
@@ -611,8 +633,10 @@ def _render_question(q, gid):
                      '<button class="btn btn-ghost redo-btn" style="display:none" onclick="redoCardFrom(this)">重做本题</button>'
                      '</div>')
     elif t in ("choice", "tf"):
+        hint = ("点击选项即可自动判分 · 键盘 A–D 直接选" if t == "choice"
+                else "点击选项即可自动判分 · 键盘 T / F 选答")
         lines.append('<div class="q-actions">'
-                     '<span class="auto-hint">点击选项即可自动判分</span>'
+                     f'<span class="auto-hint">{hint}</span>'
                      '<button class="btn btn-ghost redo-btn" style="display:none" onclick="redoCardFrom(this)">重做本题</button>'
                      '</div>')
     else:
@@ -678,6 +702,8 @@ def render(quiz: dict) -> str:
         '<button class="top-btn" type="button" onclick="openReport()">掌握度报告</button>'
         '<button class="toggle-top-btn" id="toggleTopBtn" onclick="toggleTopBars()" title="显示/隐藏顶部栏" aria-label="显示/隐藏顶部栏">▲</button>'
         '</div>'
+        '<div class="filter-badge" id="filterSummary"></div>'
+        '<div class="header-progress"><i id="headerProgress"></i></div>'
         '</div>',
         '<div id="topBars">',
         '<div class="stat-bar">'
@@ -778,6 +804,7 @@ function toggleAi(){
   refresh();
   refreshTabCounts();
   renderPanel();
+  updateFilterSummary();
 }
 function refreshTabCounts(){
   var P = aiPool();
@@ -850,6 +877,7 @@ function setType(btn){
   state.idx = 0;
   refresh();
   renderPanel();
+  updateFilterSummary();
 }
 function setChapter(btn){
   document.querySelectorAll('.chapter-nav button').forEach(function(b){b.classList.remove('active');});
@@ -858,12 +886,14 @@ function setChapter(btn){
   state.idx = 0;
   refresh();
   renderPanel();
+  updateFilterSummary();
 }
 function setMode(btn){
   document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   state.mode = btn.dataset.mode;
   state.idx = 0;
+  updateFilterSummary();
   if(state.mode==='fast'){ renderFast(); }
   else { leaveFast(); rebuildList(); renderCurrent(); updateStats(); }
 }
@@ -915,7 +945,7 @@ function exportWrong(){
     + '.main{max-width:860px;margin:0 auto;padding:20px 16px 60px;}\n'
     + '.quiz-list .q-card{display:block !important;}\n'
     + '.q-card{box-shadow:none;border:1px solid #ddd;break-inside:avoid;}\n'
-    + '.q-actions,.q-result,.auto-hint,.redo-btn{display:none !important;}\n'
+    + '.q-actions,.q-result,.auto-hint,.redo-btn,.inline-hint{display:none !important;}\n'
     + '.answer-static{display:block !important;}\n'
     + '.option,.fill-input{pointer-events:none !important;}\n'
     + '.fill-input{background:#fafafa;}\n'
@@ -926,7 +956,7 @@ function exportWrong(){
     var c = qCard(q); if(!c) return '';
     var cl = c.cloneNode(true);
     cl.classList.remove('active','fastShow');
-    Array.prototype.slice.call(cl.querySelectorAll('.q-actions,.q-result')).forEach(function(n){ if(n.parentNode) n.parentNode.removeChild(n); });
+    Array.prototype.slice.call(cl.querySelectorAll('.q-actions,.q-result,.inline-hint')).forEach(function(n){ if(n.parentNode) n.parentNode.removeChild(n); });
     var as = cl.querySelector('.answer-static'); if(as) as.classList.add('show');
     Array.prototype.slice.call(cl.querySelectorAll('.fill-input')).forEach(function(inp){ inp.disabled = true; });
     return cl.outerHTML;
@@ -1047,7 +1077,7 @@ function submitCard(card){
     return;
   }
   var correct = grade(q, card);
-  if(correct===null){ alert('请先作答'); return; }
+  if(correct===null){ flashHint(card, q.type==='fill' ? '先把空填上再提交' : '先作答再提交'); return; }
   submitted[q.id] = true;
   results[q.id] = correct;
   var wasWrong = !!wrongSet[q.id];
@@ -1107,7 +1137,40 @@ function updateStats(){
   var eb = document.getElementById('exportWrongBtn'); if(eb) eb.disabled = (wrong===0);
   var pct = objTotal?Math.round(done/objTotal*100):0;
   var pf = document.getElementById('progressFill'); if(pf) pf.style.width = pct + '%';
+  var hp = document.getElementById('headerProgress'); if(hp) hp.style.width = pct + '%';
   paintPanelCells();
+}
+
+// ── 顶部筛选摘要：顶栏折叠后仍知道「现在筛的是什么」 ──
+function updateFilterSummary(){
+  var el = document.getElementById('filterSummary');
+  if(!el) return;
+  var TYPE_LABEL = {all:'全部题型', choice:'单选题', multi:'多选题', tf:'判断题', fill:'填空题', obj:'客观题', subj:'主观题'};
+  var MODE_LABEL = {all:'全部题目', random:'随机顺序', fast:'极速刷题', unanswered:'未作答', wrong:'错题本'};
+  var chap = '全部章节';
+  if(state.chapter !== 'all'){
+    var cb = document.querySelector('.chapter-nav button.active');
+    chap = cb ? cb.textContent.trim() : state.chapter;
+  }
+  var parts = [TYPE_LABEL[state.type] || '全部题型', chap, MODE_LABEL[state.mode] || '全部题目'];
+  if(aiHide) parts.push('已隐藏AI题');
+  el.textContent = parts.join(' · ');
+}
+// 未作答提交：就地提示，不打断
+function flashHint(card, msg){
+  if(!card) return;
+  var h = card.querySelector('.inline-hint');
+  if(!h){
+    h = document.createElement('div');
+    h.className = 'inline-hint';
+    var anchor = card.querySelector('.q-actions') || card.querySelector('.q-result');
+    if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(h, anchor.nextSibling);
+    else card.appendChild(h);
+  }
+  h.textContent = msg;
+  h.classList.add('show');
+  if(h._t) clearTimeout(h._t);
+  h._t = setTimeout(function(){ h.classList.remove('show'); }, 2400);
 }
 
 // ── 空状态：说清「为什么空」并给一个出口 ──
@@ -1128,11 +1191,13 @@ function resetFilters(){
   });
   refresh();
   renderPanel();
+  updateFilterSummary();
 }
 // ── 筛选行溢出提示：能横滚时右缘渐隐，滚到最右端隐藏 ──
 function updateNavOverflow(){
-  document.querySelectorAll('.nav-row').forEach(function(row){
-    var nav = row.querySelector('.nav'); if(!nav) return;
+  document.querySelectorAll('.nav-row, .mode-bar').forEach(function(row){
+    var nav = row.classList.contains('nav-row') ? row.querySelector('.nav') : row;
+    if(!nav) return;
     var over = nav.scrollWidth > nav.clientWidth + 1;
     row.classList.toggle('scrollable', over);
     row.classList.toggle('at-end', !over || nav.scrollLeft + nav.clientWidth >= nav.scrollWidth - 1);
@@ -1343,6 +1408,8 @@ function toggleTopBars(){
   var btn = document.getElementById('toggleTopBtn');
   bars.classList.toggle('hidden');
   btn.classList.toggle('collapsed');
+  document.body.classList.toggle('topbars-hidden', bars.classList.contains('hidden'));
+  updateFilterSummary();
 }
 function renderReport(){
   var kc = {};
@@ -1359,7 +1426,7 @@ function renderReport(){
   Object.keys(kc).forEach(function(k){ total+=kc[k].score; max+=kc[k].max; });
   var html = '<div class="score-box">客观题得分：<span class="ok">'+total+'</span> / '+max+' 分</div>';
   if(Object.keys(kc).length===0){
-    html += '<div style="color:#888">还没有提交任何客观题，先做题吧。</div>';
+    html += '<div class="report-empty">还没有提交任何客观题，先做题吧。</div>';
   } else {
     html += '<table class="kc"><tr><th>知识点</th><th>得分</th><th>掌握度</th></tr>';
     var rows = Object.keys(kc).sort(function(a,b){return (kc[a].score/kc[a].max)-(kc[b].score/kc[b].max);});
@@ -1430,6 +1497,36 @@ document.addEventListener('keydown', function(e){
   var card = t.closest('.q-card'); if(card) submitCard(card);
 });
 
+// 选项快捷键：A–H / 1–9 直接选答，判断题额外支持 T / F（输入框内与弹窗时不生效）
+document.addEventListener('keydown', function(e){
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  var t = e.target;
+  var tag = t && t.tagName ? t.tagName.toUpperCase() : '';
+  if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
+  // 焦点已在选项上时，只有方向键/Enter/Space 归上面的选项键盘逻辑；字母、数字键仍可直接选答
+  if(t && t.closest && t.closest('.option')
+     && /^(ArrowLeft|ArrowRight|ArrowUp|ArrowDown|Enter| |Spacebar)$/.test(e.key)) return;
+  var rp = document.getElementById('reportOverlay');
+  if(rp && rp.classList.contains('show')) return;
+  var qid = (state.mode==='fast') ? currentPanelQid() : (curQ() ? curQ().id : null);
+  if(!qid) return;
+  var card = qCard({id:qid});
+  if(!card || card.classList.contains('answered')) return;
+  var k = e.key, idx = -1;
+  if(/^[1-9]$/.test(k)) idx = parseInt(k, 10) - 1;
+  else if(card.dataset.type === 'tf' && /^[tfTF]$/.test(k)) idx = (k.toLowerCase()==='t') ? 0 : 1;
+  else if(/^[a-zA-Z]$/.test(k)) idx = k.toUpperCase().charCodeAt(0) - 65;
+  var opts = card.querySelectorAll('.options .option');
+  if(idx < 0 || idx >= opts.length) return;
+  e.preventDefault();
+  opts[idx].click();
+  // 单选/判断点完即判分（焦点交给结果条播报），多选/填空把焦点留在选项上方便连续操作
+  if(card.dataset.type !== 'choice' && card.dataset.type !== 'tf'){
+    opts[idx].focus();
+    opts[idx].setAttribute('tabindex', '0');
+  }
+});
+
 // 点弹窗遮罩空白处关闭（点卡片内部不关闭）
 document.getElementById('reportOverlay').addEventListener('click', function(e){
   if(e.target === this) closeReport();
@@ -1472,6 +1569,7 @@ renderCurrent();
 updateStats();
 renderPanel();
 qnavInit();
+updateFilterSummary();
 updateNavOverflow();
 window.addEventListener('resize', updateNavOverflow);
 document.querySelectorAll('.nav').forEach(function(nav){
