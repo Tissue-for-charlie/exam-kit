@@ -142,10 +142,7 @@ body.fast .quiz-top { position: sticky; top: 0; z-index: 120; background: #fff; 
 .stat-item.clickable { cursor: pointer; border-radius: var(--r-sm); padding: 2px 6px; margin: -2px -6px; transition: background .14s var(--ease); }
 .stat-item.clickable:hover { background: var(--line-2); }
 
-/* ── 进度条 ── */
-.progress { height: 4px; background: var(--line-2); }
-.progress i { display: block; height: 100%; width: 0; background: var(--accent2); transition: width .24s var(--ease); }
-
+/* 做题进度只留顶栏底部那一条常驻细线（收起/滚动时也在），不再另设第二条进度条 */
 /* ── 筛选行（题型／章节）：左侧分组标签 + 右侧可横滚的胶囊条 ── */
 .nav-row { position: relative; display: flex; align-items: center; background: #fff; border-bottom: 1px solid var(--line); }
 .nav-label { flex: none; padding: 0 8px 0 20px; font-size: 11px; letter-spacing: .08em; color: var(--muted); }
@@ -735,7 +732,6 @@ def render(quiz: dict) -> str:
         '<div class="stat-item green zero"><span class="num" id="statRight">0</span><span class="lbl">正确</span></div>'
         '<div class="stat-item zero"><span class="num" id="statRate">—</span><span class="lbl">正确率</span></div>'
         '</div>',
-        f'<div class="progress"><i id="progressFill"></i></div>',
         f'<div class="nav-row"><span class="nav-label">题型</span><div class="nav">{"".join(type_tabs)}</div></div>',
         f'<div class="nav-row"><span class="nav-label">章节</span><div class="nav chapter-nav">{"".join(chapter_tabs)}</div></div>',
         '<div class="mode-bar">'
@@ -1164,7 +1160,6 @@ function updateStats(){
   var wc = document.getElementById('wrongCnt'); if(wc) wc.textContent = wrong;
   var eb = document.getElementById('exportWrongBtn'); if(eb) eb.disabled = (wrong===0);
   var pct = objTotal?Math.round(done/objTotal*100):0;
-  var pf = document.getElementById('progressFill'); if(pf) pf.style.width = pct + '%';
   var hp = document.getElementById('headerProgress'); if(hp) hp.style.width = pct + '%';
   paintPanelCells();
 }
