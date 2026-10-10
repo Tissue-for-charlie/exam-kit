@@ -300,6 +300,7 @@ body:not(.fast) .quiz-list .q-card .q-actions .btn-primary { display: none; }
 .q-result.ok, .q-result.bad { display: flex; align-items: center; justify-content: space-between; gap: 10px; animation: riseIn .22s var(--ease); }
 .q-result.ok { background: #edf6ee; color: var(--correct); }
 .q-result.bad { background: #fbeaea; color: var(--wrong); }
+.q-result.info { display: flex; align-items: center; background: #eef4fd; color: var(--accent2); animation: riseIn .22s var(--ease); }
 .q-result .pts { font-weight: 400; margin-left: 6px; }
 
 /* 答案 + 解析（打印时强制显示） */
@@ -653,6 +654,12 @@ def _render_question(q, gid):
                 else "点击选项即可自动判分 · 键盘 T / F 选答")
         lines.append('<div class="q-actions">'
                      f'<span class="auto-hint">{hint}</span>'
+                     '<button class="btn btn-ghost redo-btn" style="display:none" onclick="redoCardFrom(this)">重做本题</button>'
+                     '</div>')
+    elif t == "multi":
+        lines.append('<div class="q-actions">'
+                     '<span class="auto-hint multi-count">可多选，选完点提交</span>'
+                     f'<button class="btn btn-primary" onclick="submitCardFrom(this)">提交答案</button>'
                      '<button class="btn btn-ghost redo-btn" style="display:none" onclick="redoCardFrom(this)">重做本题</button>'
                      '</div>')
     else:
@@ -1090,8 +1097,11 @@ function submitCard(card){
     submitted[q.id] = true;
     card.classList.add('answered');
     card.querySelector('.answer-static').classList.add('show');
+    var sres = card.querySelector('.q-result');
+    if(sres){ sres.innerHTML = '<span>已记录，可对照下方参考答案</span>'; sres.className = 'q-result info'; }
     markAnsweredCard(card);
     updateStats();
+    if(state.mode==='unanswered'){ rebuildList(); renderCurrent(); }
     return;
   }
   var correct = grade(q, card);
@@ -1119,8 +1129,8 @@ function submitCard(card){
     res.setAttribute('tabindex','-1');
     try { res.focus({preventScroll:true}); } catch(err) { res.focus(); }
   }
-  // 若在「错题本」模式且已改对，列表变化需刷新
-  if(state.mode==='wrong' && correct && wasWrong){ rebuildList(); renderCurrent(); }
+  // 列表变化需刷新：错题本改对、未作答模式答完，都该把这道题移出当前列表
+  if(state.mode==='unanswered' || (state.mode==='wrong' && correct && wasWrong)){ rebuildList(); renderCurrent(); }
 }
 function submitCardFrom(btn){
   var card = btn.closest('.q-card');
@@ -1221,6 +1231,13 @@ function updateNavOverflow(){
     row.classList.toggle('at-end', !over || nav.scrollLeft + nav.clientWidth >= nav.scrollWidth - 1);
   });
 }
+// 多选题：实时告诉用户「选了几项」
+function updateMultiCount(card){
+  var el = card && card.querySelector('.auto-hint.multi-count');
+  if(!el) return;
+  var n = card.querySelectorAll('.option.selected').length;
+  el.textContent = n ? ('已选 ' + n + ' 项') : '可多选，选完点提交';
+}
 // 答完：收起「提交答案」、亮出「重做本题」
 function markAnsweredCard(card){
   var sb = card.querySelector('.q-actions .btn-primary'); if(sb) sb.style.display = 'none';
@@ -1246,6 +1263,7 @@ function redoCardFrom(btn){
   var res = card.querySelector('.q-result'); if(res){ res.className='q-result'; res.removeAttribute('tabindex'); res.innerHTML=''; }
   var rb = card.querySelector('.redo-btn'); if(rb) rb.style.display='none';
   var sb = card.querySelector('.q-actions .btn-primary'); if(sb) sb.style.display='';
+  updateMultiCount(card);
   if(state.mode==='wrong' || state.mode==='unanswered'){ rebuildList(); renderCurrent(); }
   updateStats();
 }
@@ -1474,6 +1492,7 @@ document.addEventListener('click', function(e){
   if(type === 'multi'){
     opt.classList.toggle('selected');
     opt.setAttribute('aria-checked', opt.classList.contains('selected') ? 'true' : 'false');
+    updateMultiCount(card);
   } else {
     card.querySelectorAll('.option').forEach(function(o){ o.classList.remove('selected'); o.setAttribute('aria-checked','false'); });
     opt.classList.add('selected');
