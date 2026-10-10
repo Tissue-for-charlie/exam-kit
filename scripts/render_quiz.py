@@ -130,7 +130,7 @@ body.fast .quiz-top { position: sticky; top: 0; z-index: 120; background: #fff; 
 
 /* ── 统计条 ── */
 /* 一眼能读出「做完了多少」和「对了几道」，所以是 已答 x/y · 正确 · 正确率 三项 */
-.stat-bar { display: flex; gap: 24px; padding: 12px 20px; background: #fff; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.stat-bar { display: flex; gap: 24px; padding: 9.5px 20px; background: #fff; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .stat-item { display: flex; align-items: baseline; gap: 4px; font-size: 13px; }
 .stat-item .num { font-weight: 700; font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
 .stat-item .num.total { font-size: 14px; font-weight: 600; color: var(--muted); }
@@ -146,11 +146,11 @@ body.fast .quiz-top { position: sticky; top: 0; z-index: 120; background: #fff; 
 /* ── 筛选行（题型／章节）：左侧分组标签 + 右侧可横滚的胶囊条 ── */
 .nav-row { position: relative; display: flex; align-items: center; background: #fff; border-bottom: 1px solid var(--line); }
 .nav-label { flex: none; padding: 0 8px 0 20px; font-size: 11px; letter-spacing: .08em; color: var(--muted); }
-.nav { background: #fff; padding: 8px 12px; overflow-x: auto; white-space: nowrap; display: flex; gap: 8px; scrollbar-width: none; -ms-overflow-style: none; flex: 1 1 auto; min-width: 0; }
+.nav { background: #fff; padding: 7px 12px; overflow-x: auto; white-space: nowrap; display: flex; gap: 8px; scrollbar-width: none; -ms-overflow-style: none; flex: 1 1 auto; min-width: 0; }
 /* Tab 行滚动条全隐藏（滚轮可横向滚动，不显示可见条） */
 .nav::-webkit-scrollbar { display: none; }
 .nav button {
-  flex-shrink: 0; padding: 6px 14px; border: 1px solid var(--line); border-radius: var(--r-pill);
+  flex-shrink: 0; padding: 5px 14px; border: 1px solid var(--line); border-radius: var(--r-pill);
   background: #fafbfc; font-size: 13px; color: var(--ink-2); cursor: pointer; white-space: nowrap;
   transition: background .14s var(--ease), border-color .14s var(--ease), color .14s var(--ease);
 }
@@ -169,30 +169,14 @@ body.fast .quiz-top { position: sticky; top: 0; z-index: 120; background: #fff; 
 /* ── 模式选择（与题型/章节同一套结构：左侧固定分组标签 + 右侧自己横滚的胶囊条；
       标签在滚动容器外，所以横滚时不会跟着「刷题模式」一起被滚走）── */
 .mode-bar { position: relative; display: flex; align-items: center; background: #fff; border-bottom: 1px solid var(--line); font-size: 13px; }
-.mode-nav { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 7px 20px 7px 0; overflow-x: auto; white-space: nowrap; scrollbar-width: none; -ms-overflow-style: none; }
+.mode-nav { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 20px 6px 0; overflow-x: auto; white-space: nowrap; scrollbar-width: none; -ms-overflow-style: none; }
 .mode-nav::-webkit-scrollbar { display: none; }
-.mode-btn { padding: 6px 14px; border-radius: var(--r-pill); font-size: 12.5px; cursor: pointer; border: 1px solid var(--line); background: #fafbfc; color: var(--ink-2); transition: background .14s var(--ease), border-color .14s var(--ease), color .14s var(--ease); }
+.mode-btn { padding: 5px 14px; border-radius: var(--r-pill); font-size: 12.5px; cursor: pointer; border: 1px solid var(--line); background: #fafbfc; color: var(--ink-2); transition: background .14s var(--ease), border-color .14s var(--ease), color .14s var(--ease); }
 .mode-btn:hover { border-color: var(--accent2); color: var(--accent2); }
 .mode-btn.active { background: #e8f0fb; border-color: var(--accent2); color: var(--accent2); font-weight: 600; }
 .mode-btn .cnt { font-size: 11px; opacity: .75; margin-left: 4px; }
 .mode-bar .spacer { flex: 1; }
 .link-btn { background: none; border: none; color: var(--accent2); font-size: 13px; cursor: pointer; padding: 4px 6px; }
-
-/* ── 窄屏筛选折叠：默认只留统计条一行，点「筛选」就地展开题型/章节/模式 ── */
-.filter-toggle {
-  display: none; width: 100%; align-items: center; gap: 8px;
-  background: #fff; border: none; border-bottom: 1px solid var(--line);
-  padding: 10px 14px; font-size: 13px; color: var(--ink-2); cursor: pointer; text-align: left;
-}
-.filter-toggle .ft-main { font-weight: 600; color: var(--ink); flex: none; }
-.filter-toggle .ft-sum { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.filter-toggle .ft-caret { flex: none; font-size: 11px; color: var(--muted); transition: transform .2s var(--ease); }
-body.filters-open .filter-toggle .ft-caret { transform: rotate(180deg); }
-@media (max-width: 999px) {
-  .filter-toggle { display: flex; }
-  .filter-box { display: none; }
-  body.filters-open .filter-box { display: block; }
-}
 
 /* ── 主内容 ── */
 /* 760px ≈ 每行 38–42 个汉字，读长题干不费眼；再宽视线就要来回扫 */
@@ -488,15 +472,25 @@ body.menu-open .menu { display: block; }
 .star-btn:hover { color: #f5a623; transform: scale(1.15); }
 .star-btn.on { color: #f5a623; }
 .qnav-cell { position: relative; }
-.qnav-cell.is-star::after { content: '★'; position: absolute; top: -4px; right: -1px; font-size: 9px; line-height: 1; color: #f5a623; }
+.qnav-cell.is-star::after {
+  content: ''; position: absolute; top: 2px; right: 2px; width: 9px; height: 9px; background: #f5a623;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
 .qnav-cell.is-guess::before { content: ''; position: absolute; top: 3px; left: 3px; width: 5px; height: 5px; border-radius: 50%; background: #f5a623; }
-.qnav-legend i.lg-star, .qnav-legend i.lg-guess { display: inline-flex; align-items: center; justify-content: center; font-size: 9px; color: #f5a623; }
+/* 图例里的「标记/蒙对」用同一套纯 CSS 图形：标准五角星 + 正圆点（不再依赖 ★/● 字形，避免走形/椭圆） */
+.qnav-legend i.lg-star, .qnav-legend i.lg-guess { position: relative; }
+.qnav-legend i.lg-star::after, .qnav-legend i.lg-guess::after { content: ''; position: absolute; inset: 0; margin: auto; background: #f5a623; }
+.qnav-legend i.lg-star::after {
+  width: 10px; height: 10px;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.qnav-legend i.lg-guess::after { width: 8px; height: 8px; border-radius: 50%; }
 
 /* 题内搜索：窄屏也收在「筛选」抽屉里，摘要里会带上关键词 */
-.search-row { gap: 8px; padding: 8px 14px 8px 20px; }
+.search-row { gap: 8px; padding: 7px 14px 7px 20px; }
 .search-row .nav-label { padding: 0; }
 .search-input {
-  flex: 1 1 auto; min-width: 0; padding: 7px 12px; font-size: 13px; color: var(--ink);
+  flex: 1 1 auto; min-width: 0; padding: 6px 12px; font-size: 13px; color: var(--ink);
   border: 1px solid var(--line); border-radius: var(--r-pill); background: #fff;
   transition: border-color .14s var(--ease), box-shadow .14s var(--ease);
 }
@@ -637,7 +631,7 @@ body.exam-on .mode-btn.exam-entry { display: none; }
 .toggle-top-btn:focus-visible, .nav button:focus-visible, .mode-btn:focus-visible,
 .fill-input:focus-visible, .subj-input:focus-visible, .search-input:focus-visible, .exam-min:focus-visible,
 .star-btn:focus-visible, .guess-btn:focus-visible, .report-close:focus-visible,
-.filter-toggle:focus-visible, .qnav-toggle:focus-visible, .backtop:focus-visible,
+.qnav-toggle:focus-visible, .backtop:focus-visible,
 .menu button:focus-visible, .rep-cell:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: -2px;
@@ -653,6 +647,24 @@ body.exam-on .mode-btn.exam-entry { display: none; }
     animation-duration: .01ms !important; animation-iteration-count: 1 !important;
     transition-duration: .01ms !important; scroll-behavior: auto !important;
   }
+}
+
+/* ── 窄屏：顶栏与 PC 同构（筛选各行常显）后纵向更吃紧，且手机上药丸按钮上下偏胖；
+      把各行内边距与药丸的上下内边距各收紧一档（横向内边距与字号不动，结构不变） ── */
+@media (max-width: 999px) {
+  .header { padding: 9px 16px 8px; }
+  .header-inner { gap: 5px; }
+  .top-btn, .toggle-top-btn { padding: 4px 12px; margin-top: 0; }
+  .stat-bar { padding: 5px 14px; }
+  /* 搜索行与题型/章节/刷题模式左对齐（同一列），行高与气泡高也收到同档 */
+  .nav-label { padding-left: 14px; padding-right: 6px; }
+  .search-row { padding: 6px 14px; }
+  .search-input { padding: 4px 12px; }
+  .nav-row .nav { padding: 6px 12px; }
+  .nav button { padding: 4px 14px; }
+  .mode-nav { padding: 6px 20px 6px 0; }
+  .mode-btn { padding: 4px 14px; }
+  .main { padding-top: 8px; }
 }
 
 /* ── 打印：全部题目 + 答案展开 ── */
@@ -891,10 +903,6 @@ def render(quiz: dict) -> str:
         '<div class="stat-item green zero"><span class="num" id="statRight">0</span><span class="lbl">正确</span></div>'
         '<div class="stat-item rate zero"><span class="num" id="statRate">—</span><span class="lbl">正确率</span></div>'
         '</div>',
-        '<button class="filter-toggle" id="filterToggle" type="button" onclick="toggleFilters()"'
-        ' aria-expanded="false" aria-controls="filterBox">'
-        '<span class="ft-main">筛选</span><span class="ft-sum" id="filterSummaryInline"></span>'
-        '<span class="ft-caret">▾</span></button>',
         '<div class="filter-box" id="filterBox">',
         '<div class="nav-row search-row"><span class="nav-label">搜索</span>'
         '<input class="search-input" id="qSearch" type="search" autocomplete="off" '
@@ -942,8 +950,8 @@ def render(quiz: dict) -> str:
         '<span><i class="lg-current"></i>当前</span>'
         '<span><i class="lg-ok"></i>已答</span>'
         '<span><i class="lg-wrong"></i>答错</span>'
-        '<span><i class="lg-star">★</i>标记</span>'
-        '<span><i class="lg-guess">●</i>蒙对</span>'
+        '<span><i class="lg-star"></i>标记</span>'
+        '<span><i class="lg-guess"></i>蒙对</span>'
         '</div>'
         '</aside>'
         '<div class="qnav-overlay" id="qnavOverlay" onclick="toggleQnav(false)"></div>'
@@ -1365,14 +1373,6 @@ function updateStats(){
 }
 
 // ── 顶部筛选摘要：顶栏折叠后仍知道「现在筛的是什么」 ──
-// 窄屏：筛选收进折叠抽屉，默认只留统计条一行
-function toggleFilters(force){
-  var open = (typeof force === 'boolean') ? force : !document.body.classList.contains('filters-open');
-  document.body.classList.toggle('filters-open', open);
-  var btn = document.getElementById('filterToggle');
-  if(btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-  if(open) updateNavOverflow();
-}
 function updateFilterSummary(){
   var el = document.getElementById('filterSummary');
   if(!el) return;
@@ -1391,8 +1391,6 @@ function updateFilterSummary(){
   parts.push(TYPE_LABEL[state.type] || '全部题型', chap, MODE_LABEL[state.mode] || '全部题目');
   if(aiHide) parts.push('已隐藏AI题');
   el.textContent = parts.join(' · ');
-  var inline = document.getElementById('filterSummaryInline');
-  if(inline) inline.textContent = parts.join(' · ');
   syncAllRoving();
 }
 // 未作答提交：就地提示，不打断
