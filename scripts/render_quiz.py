@@ -1325,7 +1325,8 @@ function renderPanel(){
   if(grid){
     grid.innerHTML = navList.length
       ? navList.map(function(q,i){
-          return '<button type="button" class="'+navCellClass(q)+'" data-qid="'+q.id+'">'+(i+1)+'</button>';
+          return '<button type="button" class="'+navCellClass(q)+'" data-qid="'+q.id+'" '
+            + 'aria-label="第 '+(i+1)+' 题">'+(i+1)+'</button>';
         }).join('')
       : '<div class="qnav-empty">当前筛选下没有题目</div>';
   }
@@ -1363,6 +1364,8 @@ function paintPanelCells(){
   });
 }
 function qnavJump(qid){
+  // 窄屏是覆盖式抽屉：跳完就收起，否则用户看不到跳过去的题
+  if(window.innerWidth < 1000) qnavSet(false);
   // 极速刷题：整页已列出当前筛选的题，直接滚动定位（curList 此时可能仍是上一个模式留下的，不能拿它判断）
   if(state.mode==='fast'){
     var fc = qCard({id:qid});
