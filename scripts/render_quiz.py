@@ -920,7 +920,7 @@ def render(quiz: dict) -> str:
         '<button class="mode-btn" data-mode="unanswered" onclick="setMode(this)">未作答</button>'
         '<button class="mode-btn" data-mode="wrong" onclick="setMode(this)">错题本<span class="cnt" id="wrongCnt">0</span></button>'
         '<button class="mode-btn" data-mode="star" onclick="setMode(this)">⭐ 标记<span class="cnt" id="starCnt">0</span></button>'
-        '<button class="mode-btn" data-mode="guess" onclick="setMode(this)">蒙对<span class="cnt" id="guessCnt">0</span></button>'
+        '<button class="mode-btn" data-mode="guess" onclick="setMode(this)">🟠 蒙对<span class="cnt" id="guessCnt">0</span></button>'
         '<span class="spacer"></span>'
         '<button class="mode-btn exam-entry" type="button" onclick="openExamSetup()" title="限时模拟考试：交卷后统一判分">模拟考试</button>'
         '</div>'
