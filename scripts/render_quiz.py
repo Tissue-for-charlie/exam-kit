@@ -509,6 +509,7 @@ body.menu-open .menu { display: block; }
 
 /* 「蒙对」圆点：纯 CSS 正圆，颜色与图例、面板角标统一（#f5a623），不依赖 emoji 字形 */
 .guess-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: #f5a623; margin-right: 5px; vertical-align: -1px; }
+.filter-badge .guess-dot { margin-right: 0; }   /* 摘要徽章本身是 flex + gap，圆点不用再自带外边距 */
 .empty .empty-emoji .guess-dot { display: block; width: 34px; height: 34px; margin: 0 auto; }
 /* 「标记」五角星：与图例同款纯 CSS 标准五角星（#f5a623），不依赖 ★ 等字体字形 */
 .star-ico {
@@ -1381,6 +1382,7 @@ function updateStats(){
     if(dEl) dEl.textContent = ea;
     if(tEl) tEl.textContent = '/' + exam.total;
     pct = Math.round(ea/exam.total*100);
+    var uEl = document.getElementById('examUnanswered'); if(uEl) uEl.textContent = Math.max(0, exam.total - ea);
   }
   var hp = document.getElementById('headerProgress'); if(hp) hp.style.width = pct + '%';
   paintPanelCells();
@@ -1397,14 +1399,21 @@ function updateFilterSummary(){
     var cb = document.querySelector('.chapter-nav button.active');
     chap = cb ? cb.textContent.trim() : state.chapter;
   }
-  var parts = [];
+  // 摘要按段拼：搜索词来自用户输入，只走 textContent；「蒙对」模式补一个与模式按钮/图例同款的圆点
+  var segs = [];
   if(state.q){
     var inp = document.getElementById('qSearch');
-    parts.push('搜索「' + ((inp && inp.value) || state.q) + '」');
+    segs.push({text: '搜索「' + ((inp && inp.value) || state.q) + '」'});
   }
-  parts.push(TYPE_LABEL[state.type] || '全部题型', chap, MODE_LABEL[state.mode] || '全部题目');
-  if(aiHide) parts.push('已隐藏AI题');
-  el.textContent = parts.join(' · ');
+  segs.push({text: TYPE_LABEL[state.type] || '全部题型'}, {text: chap},
+            {text: MODE_LABEL[state.mode] || '全部题目', icon: state.mode==='guess' ? 'guess-dot' : ''});
+  if(aiHide) segs.push({text: '已隐藏AI题'});
+  el.textContent = '';
+  segs.forEach(function(seg, i){
+    if(i) el.appendChild(document.createTextNode(' · '));
+    if(seg.icon){ var dot = document.createElement('i'); dot.className = seg.icon; el.appendChild(dot); }
+    el.appendChild(document.createTextNode(seg.text));
+  });
   syncAllRoving();
 }
 // 未作答提交：就地提示，不打断
@@ -2230,6 +2239,9 @@ function tickExam(){
   var p = document.getElementById('examProg');
   if(p) p.style.width = Math.round(Math.max(0, Math.min(1, spent)) * 100) + '%';
   var u = document.getElementById('examUnanswered'); if(u) u.textContent = Math.max(0, exam.total - done);
+  // 顶栏细线按「已答 / 题量」跟着走：填空题是输入即算作答，不走 updateStats，别让它停在半途
+  var hp = document.getElementById('headerProgress');
+  if(hp && exam.total) hp.style.width = Math.round(done/exam.total*100) + '%';
   var strip = document.getElementById('examStrip'); if(strip) strip.classList.toggle('warn', exam.left <= 60);
   if(exam.left <= 0) submitExam();
 }
@@ -2349,6 +2361,14 @@ document.addEventListener('keydown', function(e){
   if(!t || !t.classList || !t.classList.contains('fill-input')) return;
   e.preventDefault();
   var card = t.closest('.q-card'); if(card) submitCard(card);
+});
+
+// 填空题输入：边打字边算「已作答」（考试中即时刷新进度条与题号面板，不判分、不揭晓）
+document.addEventListener('input', function(e){
+  if(!exam.on) return;
+  var t = e.target;
+  if(!t || !t.classList || !t.classList.contains('fill-input')) return;
+  if(t.closest('.q-card')) updateStats();
 });
 
 // 选项快捷键：单选/多选 A–S–D–F（选项多于 4 个时用数字键 1–9），判断题 A / S（输入框内与弹窗时不生效）
