@@ -510,6 +510,12 @@ body.menu-open .menu { display: block; }
 /* 「蒙对」圆点：纯 CSS 正圆，颜色与图例、面板角标统一（#f5a623），不依赖 emoji 字形 */
 .guess-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: #f5a623; margin-right: 5px; vertical-align: -1px; }
 .empty .empty-emoji .guess-dot { display: block; width: 34px; height: 34px; margin: 0 auto; }
+/* 「标记」五角星：与图例同款纯 CSS 标准五角星（#f5a623），不依赖 ★/⭐ 字形 */
+.star-ico {
+  display: inline-block; width: 12px; height: 12px; background: #f5a623; margin-right: 5px; vertical-align: -1px;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.empty .empty-emoji .star-ico { display: block; width: 34px; height: 34px; margin: 0 auto; }
 
 /* 模拟考试：顶栏常驻一条计时/进度条，考试中不泄露对错 */
 .exam-strip {
@@ -923,7 +929,7 @@ def render(quiz: dict) -> str:
         '<button class="mode-btn" data-mode="fast" onclick="setMode(this)">极速刷题</button>'
         '<button class="mode-btn" data-mode="unanswered" onclick="setMode(this)">未作答</button>'
         '<button class="mode-btn" data-mode="wrong" onclick="setMode(this)">错题本<span class="cnt" id="wrongCnt">0</span></button>'
-        '<button class="mode-btn" data-mode="star" onclick="setMode(this)">⭐ 标记<span class="cnt" id="starCnt">0</span></button>'
+        '<button class="mode-btn" data-mode="star" onclick="setMode(this)"><i class="star-ico"></i>标记<span class="cnt" id="starCnt">0</span></button>'
         '<button class="mode-btn" data-mode="guess" onclick="setMode(this)"><i class="guess-dot"></i>蒙对<span class="cnt" id="guessCnt">0</span></button>'
         '<span class="spacer"></span>'
         '<button class="mode-btn exam-entry" type="button" onclick="openExamSetup()" title="限时模拟考试：交卷后统一判分">模拟考试</button>'
@@ -1422,7 +1428,7 @@ function flashHint(card, msg){
 function emptyHTML(kind){
   if(kind==='wrong') return '<div class="empty-emoji">🎉</div><div class="empty-title">太棒了，没有错题！</div>';
   if(kind==='unanswered') return '<div class="empty-emoji">🎉</div><div class="empty-title">题目已全部作答！</div>';
-  if(kind==='star') return '<div class="empty-emoji">☆</div><div class="empty-title">还没有标记的题目</div>'
+  if(kind==='star') return '<div class="empty-emoji"><i class="star-ico"></i></div><div class="empty-title">还没有标记的题目</div>'
     + '<div class="empty-actions"><button class="btn btn-outline" onclick="exitStarMode()">看全部题目</button></div>';
   if(kind==='guess') return '<div class="empty-emoji"><i class="guess-dot"></i></div><div class="empty-title">还没有标记为「蒙对」的题目</div>'
     + '<div class="empty-actions"><button class="btn btn-outline" onclick="exitStarMode()">看全部题目</button></div>';
