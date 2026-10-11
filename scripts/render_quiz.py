@@ -509,7 +509,6 @@ body.menu-open .menu { display: block; }
 
 /* 「蒙对」圆点：纯 CSS 正圆，颜色与图例、面板角标统一（#f5a623），不依赖 emoji 字形 */
 .guess-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: #f5a623; margin-right: 5px; vertical-align: -1px; }
-.filter-badge .guess-dot { margin-right: 0; }   /* 摘要徽章本身是 flex + gap，圆点不用再自带外边距 */
 .empty .empty-emoji .guess-dot { display: block; width: 34px; height: 34px; margin: 0 auto; }
 /* 「标记」五角星：与图例同款纯 CSS 标准五角星（#f5a623），不依赖 ★ 等字体字形 */
 .star-ico {
@@ -1399,21 +1398,14 @@ function updateFilterSummary(){
     var cb = document.querySelector('.chapter-nav button.active');
     chap = cb ? cb.textContent.trim() : state.chapter;
   }
-  // 摘要按段拼：搜索词来自用户输入，只走 textContent；「蒙对」模式补一个与模式按钮/图例同款的圆点
-  var segs = [];
+  var parts = [];
   if(state.q){
     var inp = document.getElementById('qSearch');
-    segs.push({text: '搜索「' + ((inp && inp.value) || state.q) + '」'});
+    parts.push('搜索「' + ((inp && inp.value) || state.q) + '」');
   }
-  segs.push({text: TYPE_LABEL[state.type] || '全部题型'}, {text: chap},
-            {text: MODE_LABEL[state.mode] || '全部题目', icon: state.mode==='guess' ? 'guess-dot' : ''});
-  if(aiHide) segs.push({text: '已隐藏AI题'});
-  el.textContent = '';
-  segs.forEach(function(seg, i){
-    if(i) el.appendChild(document.createTextNode(' · '));
-    if(seg.icon){ var dot = document.createElement('i'); dot.className = seg.icon; el.appendChild(dot); }
-    el.appendChild(document.createTextNode(seg.text));
-  });
+  parts.push(TYPE_LABEL[state.type] || '全部题型', chap, MODE_LABEL[state.mode] || '全部题目');
+  if(aiHide) parts.push('已隐藏AI题');
+  el.textContent = parts.join(' · ');
   syncAllRoving();
 }
 // 未作答提交：就地提示，不打断
