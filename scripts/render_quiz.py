@@ -444,7 +444,7 @@ table.kc th { background: var(--line-2); }
 .bar i { display: block; height: 100%; background: var(--accent2); }
 .bar i.weak { background: var(--wrong); }
 
-/* ── 标记⭐ / 搜索 / 蒙对 / 模拟考试 / 导出菜单 ── */
+/* ── 标记 / 搜索 / 蒙对 / 模拟考试 / 导出菜单 ── */
 /* 顶部「导出」下拉：错题、双卷打印、双卷 Word 都收在这里，顶栏按钮不膨胀 */
 .menu-wrap { position: relative; display: inline-flex; }
 .menu {
@@ -463,7 +463,7 @@ body.menu-open .menu { display: block; }
 .menu .menu-sep { height: 1px; background: var(--line); margin: 5px 8px; }
 .menu .menu-tip { font-size: 11px; color: var(--muted); padding: 2px 12px 4px; }
 
-/* 标记⭐：卡片右上角星标 + 面板格角标 */
+/* 标记：卡片右上角星标 + 面板格角标 */
 .star-btn {
   background: none; border: none; cursor: pointer; font-size: 17px; line-height: 1;
   color: #c9ced8; padding: 0 3px; border-radius: 6px;
@@ -510,7 +510,7 @@ body.menu-open .menu { display: block; }
 /* 「蒙对」圆点：纯 CSS 正圆，颜色与图例、面板角标统一（#f5a623），不依赖 emoji 字形 */
 .guess-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: #f5a623; margin-right: 5px; vertical-align: -1px; }
 .empty .empty-emoji .guess-dot { display: block; width: 34px; height: 34px; margin: 0 auto; }
-/* 「标记」五角星：与图例同款纯 CSS 标准五角星（#f5a623），不依赖 ★/⭐ 字形 */
+/* 「标记」五角星：与图例同款纯 CSS 标准五角星（#f5a623），不依赖 ★ 等字体字形 */
 .star-ico {
   display: inline-block; width: 12px; height: 12px; background: #f5a623; margin-right: 5px; vertical-align: -1px;
   clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
@@ -1391,7 +1391,7 @@ function updateFilterSummary(){
   var el = document.getElementById('filterSummary');
   if(!el) return;
   var TYPE_LABEL = {all:'全部题型', choice:'单选题', multi:'多选题', tf:'判断题', fill:'填空题', obj:'客观题', subj:'主观题'};
-  var MODE_LABEL = {all:'全部题目', random:'随机顺序', fast:'极速刷题', unanswered:'未作答', wrong:'错题本', star:'⭐ 标记', guess:'蒙对', exam:'模拟考试'};
+  var MODE_LABEL = {all:'全部题目', random:'随机顺序', fast:'极速刷题', unanswered:'未作答', wrong:'错题本', star:'标记', guess:'蒙对', exam:'模拟考试'};
   var chap = '全部章节';
   if(state.chapter !== 'all'){
     var cb = document.querySelector('.chapter-nav button.active');
@@ -1785,11 +1785,11 @@ function renderReport(){
   document.getElementById('reportBody').innerHTML = html;
 }
 
-// ══ 标记⭐ / 蒙对 / 搜索 / 导出双卷 / 模拟考试 ══
-var starSet = {};      // qid -> true（标了 ⭐ 的重点题）
+// ══ 标记 / 蒙对 / 搜索 / 导出双卷 / 模拟考试 ══
+var starSet = {};      // qid -> true（已标记的重点题）
 var guessSet = {};     // qid -> true（答对了但其实是蒙的）
 
-// ── 标记⭐：星标重点题，可用「标记」模式集中复习 ──
+// ── 标记：星标重点题，可用「标记」模式集中复习 ──
 function countStars(){ var n=0; for(var k in starSet) if(starSet[k]) n++; return n; }
 function countGuesses(){ var n=0; for(var k in guessSet) if(guessSet[k]) n++; return n; }
 function syncStar(btn, qid){
@@ -1807,7 +1807,7 @@ function toggleStar(btn){
   if(starSet[qid]) delete starSet[qid]; else starSet[qid] = true;
   syncStar(btn, qid);
   updateStats();
-  flashHint(card, starSet[qid] ? '已标记 ⭐，可在「标记」模式里找到' : '已取消标记');
+  flashHint(card, starSet[qid] ? '已标记，可在「标记」模式里找到' : '已取消标记');
   if(state.mode==='star'){ rebuildList(); renderCurrent(); }
 }
 function exitStarMode(){
