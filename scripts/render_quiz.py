@@ -507,6 +507,10 @@ body.menu-open .menu { display: block; }
 .guess-btn.on { border-style: solid; border-color: #f5a623; background: #fdf3e3; color: #b26a00; font-weight: 600; }
 .q-result .guess-btn { pointer-events: auto; }
 
+/* 「蒙对」圆点：纯 CSS 正圆，颜色与图例、面板角标统一（#f5a623），不依赖 emoji 字形 */
+.guess-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: #f5a623; margin-right: 5px; vertical-align: -1px; }
+.empty .empty-emoji .guess-dot { display: block; width: 34px; height: 34px; margin: 0 auto; }
+
 /* 模拟考试：顶栏常驻一条计时/进度条，考试中不泄露对错 */
 .exam-strip {
   display: none; align-items: center; gap: 10px; margin-top: 8px; padding: 6px 10px 6px 12px;
@@ -920,7 +924,7 @@ def render(quiz: dict) -> str:
         '<button class="mode-btn" data-mode="unanswered" onclick="setMode(this)">未作答</button>'
         '<button class="mode-btn" data-mode="wrong" onclick="setMode(this)">错题本<span class="cnt" id="wrongCnt">0</span></button>'
         '<button class="mode-btn" data-mode="star" onclick="setMode(this)">⭐ 标记<span class="cnt" id="starCnt">0</span></button>'
-        '<button class="mode-btn" data-mode="guess" onclick="setMode(this)">🟠 蒙对<span class="cnt" id="guessCnt">0</span></button>'
+        '<button class="mode-btn" data-mode="guess" onclick="setMode(this)"><i class="guess-dot"></i>蒙对<span class="cnt" id="guessCnt">0</span></button>'
         '<span class="spacer"></span>'
         '<button class="mode-btn exam-entry" type="button" onclick="openExamSetup()" title="限时模拟考试：交卷后统一判分">模拟考试</button>'
         '</div>'
@@ -1420,7 +1424,7 @@ function emptyHTML(kind){
   if(kind==='unanswered') return '<div class="empty-emoji">🎉</div><div class="empty-title">题目已全部作答！</div>';
   if(kind==='star') return '<div class="empty-emoji">☆</div><div class="empty-title">还没有标记的题目</div>'
     + '<div class="empty-actions"><button class="btn btn-outline" onclick="exitStarMode()">看全部题目</button></div>';
-  if(kind==='guess') return '<div class="empty-emoji">☆</div><div class="empty-title">还没有标记为「蒙对」的题目</div>'
+  if(kind==='guess') return '<div class="empty-emoji"><i class="guess-dot"></i></div><div class="empty-title">还没有标记为「蒙对」的题目</div>'
     + '<div class="empty-actions"><button class="btn btn-outline" onclick="exitStarMode()">看全部题目</button></div>';
   if(state.q) return '<div class="empty-title">没有找到匹配的题目</div>'
     + '<div class="empty-actions"><button class="btn btn-outline" onclick="clearSearch()">清空搜索</button>'
