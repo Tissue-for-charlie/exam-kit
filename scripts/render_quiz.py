@@ -373,7 +373,7 @@ body.qnav-open .qnav { transform: none; visibility: visible; }
 .qnav-cell.is-wrong { background: var(--wrong); border-color: var(--wrong); color: #fff; }
 .qnav-cell.is-current { background: var(--accent2); border-color: var(--accent2); color: #fff; box-shadow: 0 0 0 2px rgba(21,101,192,.28); }
 .qnav-cell.is-picked { background: #e8f0fb; border-color: var(--accent2); color: var(--accent2); }
-.qnav-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 24px 4px; }
+.qnav-empty { grid-column: 1 / -1; color: var(--muted); font-size: 13px; text-align: center; padding: 24px 10px; line-height: 1.8; }
 .qnav-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-2); flex: none; }
 .qnav-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .qnav-legend i { width: 13px; height: 13px; border-radius: 3px; border: 1px solid var(--line); background: #fff; }
@@ -557,6 +557,7 @@ body.exam-on .mode-btn.exam-entry { display: none; }
 .rep-cell:hover { border-color: var(--accent2); color: var(--accent2); }
 .rep-cell.is-ok { background: var(--correct); border-color: var(--correct); color: #fff; }
 .rep-cell.is-wrong { background: var(--wrong); border-color: var(--wrong); color: #fff; }
+.rep-cell.is-blank { background: #f7f8fa; border-color: var(--line); color: var(--muted); }
 
 /* ── 移动端 ── */
 @media (max-width: 480px) {
@@ -747,21 +748,21 @@ def _render_question(q, gid):
         lines.append(f'<div class="q-stem">{qtext}</div>')
         lines.append('<div class="options" role="radiogroup">')
         for i, o in enumerate(q["options"]):
-            lines.append(f'<div class="option" role="radio" aria-checked="false" tabindex="{0 if i == 0 else -1}" data-val="{i}">'
+            lines.append(f'<div class="option" role="radio" aria-checked="false" tabindex="0" data-val="{i}">'
                          f'<span class="opt-key">{chr(65 + i)}</span><span>{html.escape(o)}</span></div>')
         lines.append("</div>")
     elif t == "multi":
         lines.append(f'<div class="q-stem">{qtext}</div>')
         lines.append('<div class="options" role="group">')
         for i, o in enumerate(q["options"]):
-            lines.append(f'<div class="option" role="checkbox" aria-checked="false" tabindex="{0 if i == 0 else -1}" data-val="{i}">'
+            lines.append(f'<div class="option" role="checkbox" aria-checked="false" tabindex="0" data-val="{i}">'
                          f'<span class="opt-key">{chr(65 + i)}</span><span>{html.escape(o)}</span></div>')
         lines.append("</div>")
     elif t == "tf":
         lines.append(f'<div class="q-stem">{qtext}</div>')
         lines.append(f'<div class="options tf-group" role="radiogroup">'
                      f'<div class="option" role="radio" aria-checked="false" tabindex="0" data-val="true"><span class="opt-key">✓</span><span>正确</span></div>'
-                     f'<div class="option" role="radio" aria-checked="false" tabindex="-1" data-val="false"><span class="opt-key">✗</span><span>错误</span></div>'
+                     f'<div class="option" role="radio" aria-checked="false" tabindex="0" data-val="false"><span class="opt-key">✗</span><span>错误</span></div>'
                      f'</div>')
     elif t == "fill":
         ans_list = q.get("answer") or []
@@ -801,15 +802,15 @@ def _render_question(q, gid):
                      '<button class="btn btn-ghost redo-btn" style="display:none" onclick="redoCardFrom(this)">重做本题</button>'
                      '</div>')
     elif t in ("choice", "tf"):
-        hint = ("点击选项即可自动判分 · 键盘 A–D 直接选" if t == "choice"
-                else "点击选项即可自动判分 · 键盘 T / F 选答")
+        hint = ("点击选项即可自动判分 · 键盘 A–S–D–F 直接选" if t == "choice"
+                else "点击选项即可自动判分 · 键盘 A / S 选答")
         lines.append('<div class="q-actions">'
                      f'<span class="auto-hint">{hint}</span>'
                      '<button class="btn btn-ghost redo-btn" style="display:none" onclick="redoCardFrom(this)">重做本题</button>'
                      '</div>')
     elif t == "multi":
         lines.append('<div class="q-actions">'
-                     '<span class="auto-hint multi-count">可多选，选完点提交</span>'
+                     '<span class="auto-hint multi-count">可多选，键盘 A–S–D–F 切换，选完点提交</span>'
                      f'<button class="btn btn-primary" onclick="submitCardFrom(this)">提交答案</button>'
                      '<button class="btn btn-ghost redo-btn" style="display:none" onclick="redoCardFrom(this)">重做本题</button>'
                      '</div>')
@@ -919,6 +920,7 @@ def render(quiz: dict) -> str:
         '<button class="mode-btn" data-mode="unanswered" onclick="setMode(this)">未作答</button>'
         '<button class="mode-btn" data-mode="wrong" onclick="setMode(this)">错题本<span class="cnt" id="wrongCnt">0</span></button>'
         '<button class="mode-btn" data-mode="star" onclick="setMode(this)">⭐ 标记<span class="cnt" id="starCnt">0</span></button>'
+        '<button class="mode-btn" data-mode="guess" onclick="setMode(this)">蒙对<span class="cnt" id="guessCnt">0</span></button>'
         '<span class="spacer"></span>'
         '<button class="mode-btn exam-entry" type="button" onclick="openExamSetup()" title="限时模拟考试：交卷后统一判分">模拟考试</button>'
         '</div>'
@@ -1058,6 +1060,7 @@ function rebuildList(){
     if(state.mode==='wrong') return !!wrongSet[q.id];
     if(state.mode==='unanswered') return !submitted[q.id];
     if(state.mode==='star') return !!starSet[q.id];
+    if(state.mode==='guess') return !!guessSet[q.id];
     if(state.mode==='exam') return !!exam.set[q.id];
     return true;
   });
@@ -1360,6 +1363,7 @@ function updateStats(){
   var wc = document.getElementById('wrongCnt'); if(wc) wc.textContent = wrong;
   var eb = document.getElementById('exportWrongBtn'); if(eb) eb.disabled = (wrong===0);
   var sc = document.getElementById('starCnt'); if(sc) sc.textContent = countStars();
+  var gc = document.getElementById('guessCnt'); if(gc) gc.textContent = countGuesses();
   var pct = objTotal?Math.round(done/objTotal*100):0;
   // 考试中：统计条与顶栏细线改报「考试进度」，不泄露对错
   if(exam.on && exam.total){
@@ -1377,7 +1381,7 @@ function updateFilterSummary(){
   var el = document.getElementById('filterSummary');
   if(!el) return;
   var TYPE_LABEL = {all:'全部题型', choice:'单选题', multi:'多选题', tf:'判断题', fill:'填空题', obj:'客观题', subj:'主观题'};
-  var MODE_LABEL = {all:'全部题目', random:'随机顺序', fast:'极速刷题', unanswered:'未作答', wrong:'错题本', star:'⭐ 标记', exam:'模拟考试'};
+  var MODE_LABEL = {all:'全部题目', random:'随机顺序', fast:'极速刷题', unanswered:'未作答', wrong:'错题本', star:'⭐ 标记', guess:'蒙对', exam:'模拟考试'};
   var chap = '全部章节';
   if(state.chapter !== 'all'){
     var cb = document.querySelector('.chapter-nav button.active');
@@ -1415,6 +1419,8 @@ function emptyHTML(kind){
   if(kind==='wrong') return '<div class="empty-emoji">🎉</div><div class="empty-title">太棒了，没有错题！</div>';
   if(kind==='unanswered') return '<div class="empty-emoji">🎉</div><div class="empty-title">题目已全部作答！</div>';
   if(kind==='star') return '<div class="empty-emoji">☆</div><div class="empty-title">还没有标记的题目</div>'
+    + '<div class="empty-actions"><button class="btn btn-outline" onclick="exitStarMode()">看全部题目</button></div>';
+  if(kind==='guess') return '<div class="empty-emoji">☆</div><div class="empty-title">还没有标记为「蒙对」的题目</div>'
     + '<div class="empty-actions"><button class="btn btn-outline" onclick="exitStarMode()">看全部题目</button></div>';
   if(state.q) return '<div class="empty-title">没有找到匹配的题目</div>'
     + '<div class="empty-actions"><button class="btn btn-outline" onclick="clearSearch()">清空搜索</button>'
@@ -1482,7 +1488,7 @@ function updateMultiCount(card){
   var el = card && card.querySelector('.auto-hint.multi-count');
   if(!el) return;
   var n = card.querySelectorAll('.option.selected').length;
-  el.textContent = n ? ('已选 ' + n + ' 项') : '可多选，选完点提交';
+  el.textContent = n ? ('已选 ' + n + ' 项') : '可多选，键盘 A–S–D–F 切换，选完点提交';
 }
 // 答完：收起「提交答案」、亮出「重做本题」
 function markAnsweredCard(card){
@@ -1497,8 +1503,8 @@ function resetCardState(card){
     o.classList.remove('selected','correct','wrong','missed','disabled');
     o.setAttribute('aria-checked','false');
   });
-  card.querySelectorAll('.options .option').forEach(function(o, i){
-    o.setAttribute('tabindex', i===0 ? '0' : '-1');
+  card.querySelectorAll('.options .option').forEach(function(o){
+    o.setAttribute('tabindex', '0');   // 方向键只切题，选项靠 Tab 逐个走（不再 roving）
   });
   card.querySelectorAll('.fill-input').forEach(function(inp){ inp.value=''; inp.classList.remove('correct','wrong'); });
   card.querySelectorAll('.subj-input').forEach(function(ta){ ta.value=''; });
@@ -1811,7 +1817,9 @@ function toggleGuess(btn){
   var on = !!guessSet[qid];
   btn.classList.toggle('on', on);
   btn.textContent = on ? '已记为蒙对' : '其实是蒙的';
+  updateStats();
   paintPanelCells();
+  if(state.mode==='guess'){ rebuildList(); renderCurrent(); }
 }
 
 // ── 题内搜索：题干 / 选项 / 答案 / 解析 / 知识点 ──
@@ -1895,15 +1903,13 @@ function paperStem(q){
   return s;
 }
 function paperList(){ return navList; }
-function paperPara(){
+function paperPara(withAnswers){
   var course = QUIZ.course || '复习题';
-  return {title: course + (paperWithAnswers ? ' · 复习题（含答案）' : ' · 练习卷（空白）'),
-          sub: '共 ' + paperList().length + ' 题' + (paperWithAnswers ? ' · 含答案' : ' · 空白卷')};
+  return {title: course + (withAnswers ? ' · 复习题（含答案）' : ' · 练习卷（空白）'),
+          sub: '共 ' + paperList().length + ' 题' + (withAnswers ? ' · 含答案' : ' · 空白卷')};
 }
-var paperWithAnswers = false;
 function buildPaper(withAnswers){
-  paperWithAnswers = withAnswers;
-  var meta = paperPara();
+  var meta = paperPara(withAnswers);
   var out = ['<div class="pp-title">'+escHtml(meta.title)+'</div>',
              '<div class="pp-sub">'+escHtml(meta.sub)+'</div>'];
   paperList().forEach(function(q, i){
@@ -1936,7 +1942,7 @@ function printPaper(withAnswers){
     + '.pp-opt{margin-left:6mm;white-space:pre-wrap;}'
     + '.pp-ans{margin-top:1mm;}';
   var html = '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>'
-    + escHtml(paperPara().title) + '</title><style>' + css + '</style></head><body>'
+    + escHtml(paperPara(withAnswers).title) + '</title><style>' + css + '</style></head><body>'
     + buildPaper(withAnswers) + '</body></html>';
   var f = document.createElement('iframe');
   f.setAttribute('aria-hidden', 'true');
@@ -2074,7 +2080,7 @@ function exportPaperWord(withAnswers){
 }
 
 // ── 模拟考试：限时、不即时判分，交卷后统一出分 ──
-var exam = {on:false, total:0, left:0, timer:null, list:[], set:{}, barsHidden:false};
+var exam = {on:false, total:0, left:0, timer:null, list:[], set:{}, marks:{}, barsHidden:false};
 // 考试结束把先前自动收起的顶部栏还原（用户考试前就是收起的则不动）
 function examRestoreBars(){ if(exam && !exam.barsHidden) toggleTopBars(true); }
 function mmss(s){ var m = Math.floor(s/60), r = s%60; return (m<10?'0':'')+m+':'+(r<10?'0':'')+r; }
@@ -2221,6 +2227,7 @@ function submitExam(){
   if(!exam.on) return;
   stopExamTimer();
   var right = 0, wrong = 0, blank = 0;
+  exam.marks = {};
   exam.list.forEach(function(q){
     var c = qCard(q);
     var ok = c ? grade(q, c) : null;
@@ -2230,9 +2237,9 @@ function submitExam(){
       c.classList.remove('answered');
     }
     submitted[q.id] = true;
-    if(ok === null){ results[q.id] = false; wrongSet[q.id] = true; blank++; paintReveal(c, q, false, true); }
-    else if(ok){ delete wrongSet[q.id]; right++; paintReveal(c, q, true, false); }
-    else { results[q.id] = false; wrongSet[q.id] = true; wrong++; paintReveal(c, q, false, false); }
+    if(ok === null){ results[q.id] = false; wrongSet[q.id] = true; blank++; exam.marks[q.id] = 'blank'; paintReveal(c, q, false, true); }
+    else if(ok){ delete wrongSet[q.id]; results[q.id] = true; right++; exam.marks[q.id] = 'ok'; paintReveal(c, q, true, false); }
+    else { results[q.id] = false; wrongSet[q.id] = true; wrong++; exam.marks[q.id] = 'wrong'; paintReveal(c, q, false, false); }
   });
   var used = exam.usedTotal - exam.left;
   exam.on = false;
@@ -2272,9 +2279,11 @@ function showExamResult(right, wrong, blank, used){
   var h = '<div class="score-box">得分 <span class="ok">' + right + '</span> / ' + n + ' 题'
     + ' <span style="font-size:14px;font-weight:400;color:var(--muted)">正确率 ' + rate + '% · 用时 ' + mmss(Math.max(0, used)) + '</span></div>'
     + '<div class="report-empty">答对 ' + right + ' · 答错 ' + wrong + ' · 未作答 ' + blank + '；错题与未作答的题已进错题本。</div>'
-    + '<div class="rep-sub">逐题结果（点号回看）</div><div class="rep-grid">';
+    + '<div class="rep-sub">逐题结果（点号回看 · 绿=答对 / 红=答错 / 灰=未作答）</div><div class="rep-grid">';
   exam.list.forEach(function(q, i){
-    h += '<button type="button" class="rep-cell ' + (results[q.id] ? 'is-ok' : 'is-wrong') + '" '
+    var mark = (exam.marks || {})[q.id] || (results[q.id] ? 'ok' : 'blank');
+    var cls = (mark === 'ok') ? 'is-ok' : (mark === 'wrong') ? 'is-wrong' : 'is-blank';
+    h += '<button type="button" class="rep-cell ' + cls + '" '
       +  'onclick="jumpFromExam(\'' + q.id + '\')">' + (i+1) + '</button>';
   });
   h += '</div>';
@@ -2312,7 +2321,7 @@ document.addEventListener('click', function(e){
   }
 });
 
-// 选项键盘操作：roving tabindex —— 方向键在组内移焦点，Enter/Space 等同鼠标点击
+// 选项键盘操作：Enter/Space 等同鼠标点击；方向键不在选项间游走（方向键始终只负责切题，Tab 才管焦点）
 document.addEventListener('keydown', function(e){
   var t = e.target;
   if(!t || !t.closest) return;
@@ -2320,17 +2329,7 @@ document.addEventListener('keydown', function(e){
   if(!opt) return;
   var tag = t.tagName ? t.tagName.toUpperCase() : '';
   if(tag==='INPUT' || tag==='TEXTAREA') return;   // 填空/主观题输入不受影响
-  var card = opt.closest('.q-card'); if(!card) return;
-  if(e.key==='Enter' || e.key===' ' || e.key==='Spacebar'){ e.preventDefault(); opt.click(); return; }
-  var d = (e.key==='ArrowRight' || e.key==='ArrowDown') ? 1
-        : (e.key==='ArrowLeft' || e.key==='ArrowUp') ? -1 : 0;
-  if(!d) return;
-  var opts = Array.prototype.slice.call(card.querySelectorAll('.options .option'));
-  if(!opts.length) return;
-  e.preventDefault();
-  var n = (opts.indexOf(opt) + d + opts.length) % opts.length;
-  opts.forEach(function(o, k){ o.setAttribute('tabindex', k===n ? '0' : '-1'); });
-  opts[n].focus();
+  if(e.key==='Enter' || e.key===' ' || e.key==='Spacebar'){ e.preventDefault(); opt.click(); }
 });
 
 // 填空题：输入框内回车即提交
@@ -2342,7 +2341,7 @@ document.addEventListener('keydown', function(e){
   var card = t.closest('.q-card'); if(card) submitCard(card);
 });
 
-// 选项快捷键：A–H / 1–9 直接选答，判断题额外支持 T / F（输入框内与弹窗时不生效）
+// 选项快捷键：单选/多选 A–S–D–F（选项多于 4 个时用数字键 1–9），判断题 A / S（输入框内与弹窗时不生效）
 document.addEventListener('keydown', function(e){
   if(e.ctrlKey || e.metaKey || e.altKey) return;
   var t = e.target;
@@ -2358,18 +2357,27 @@ document.addEventListener('keydown', function(e){
   if(!qid) return;
   var card = qCard({id:qid});
   if(!card || (!exam.on && card.classList.contains('answered'))) return;
-  var k = e.key, idx = -1;
-  if(/^[1-9]$/.test(k)) idx = parseInt(k, 10) - 1;
-  else if(card.dataset.type === 'tf' && /^[tfTF]$/.test(k)) idx = (k.toLowerCase()==='t') ? 0 : 1;
-  else if(/^[a-zA-Z]$/.test(k)) idx = k.toUpperCase().charCodeAt(0) - 65;
+  var k = e.key, idx = -1, ty = card.dataset.type;
+  var low = k.length === 1 ? k.toLowerCase() : '';
+  var ASDF = {a:0, s:1, d:2, f:3};
   var opts = card.querySelectorAll('.options .option');
+  if(ty === 'tf'){
+    // 判断题：A = 正确 / S = 错误（数字键 1 / 2 备用）
+    if(low==='a') idx = 0;
+    else if(low==='s') idx = 1;
+    else if(k==='1') idx = 0;
+    else if(k==='2') idx = 1;
+  } else if(ty === 'choice' || ty === 'multi'){
+    // 单选/多选：A–S–D–F 对应前四个选项（选项多于 4 个时用数字键 1–9）
+    if(ASDF[low] !== undefined) idx = ASDF[low];
+    else if(/^[1-9]$/.test(k)) idx = parseInt(k, 10) - 1;
+  }
   if(idx < 0 || idx >= opts.length) return;
   e.preventDefault();
   opts[idx].click();
   // 单选/判断点完即判分（焦点交给结果条播报），多选/填空把焦点留在选项上方便连续操作
   if(card.dataset.type !== 'choice' && card.dataset.type !== 'tf'){
     opts[idx].focus();
-    opts[idx].setAttribute('tabindex', '0');
   }
 });
 
@@ -2387,7 +2395,7 @@ document.addEventListener('keydown', function(e){
   var t = e.target;
   var tag = t && t.tagName ? t.tagName.toUpperCase() : '';
   if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
-  if(t && t.closest && t.closest('.option')) return;   // 焦点在选项上时方向键归选项导航
+  if(t && t.closest && t.closest('.option') && e.key==='Enter') return;   // Enter 归选项选中，方向键仍只切题
   if(t && t.closest && t.closest('[data-roving-group]')) return;   // 焦点在题号格/筛选排上时方向键归 roving
   if(state.mode==='fast') return;
   var rp = document.getElementById('reportOverlay');

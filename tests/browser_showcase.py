@@ -133,6 +133,64 @@ def run() -> int:
                             raise RuntimeError("quiz star mode did not filter to starred questions")
                         desktop.click('.mode-btn[data-mode="all"]')
                         desktop.wait_for_timeout(150)
+                        # 蒙对入口：答对客观题后才出现；点它计数 +1，且「蒙对」模式只剩这道题
+                        qinfo = desktop.evaluate(
+                            """() => {
+                                const cards = Array.from(document.querySelectorAll('.q-card'));
+                                const c = cards.find(el => el.dataset.type !== 'fill' && el.dataset.type !== 'subj'
+                                                           && !el.classList.contains('answered')) || cards[0];
+                                return { qid: c.dataset.qid };
+                            }"""
+                        )
+                        desktop.evaluate("qid => qnavJump(qid)", qinfo["qid"])
+                        desktop.wait_for_timeout(120)
+                        if desktop.evaluate("() => String(guessCnt.textContent)") != "0":
+                            raise RuntimeError("quiz guess counter should start at 0")
+                        desktop.evaluate(
+                            """() => {
+                                const c = document.querySelector('.q-card.active');
+                                const q = curQ();
+                                if (c.dataset.type === 'multi') {
+                                  (q.answer || []).forEach(i => {
+                                    const o = c.querySelector('.option[data-val="' + i + '"]');
+                                    if (o) o.click();
+                                  });
+                                  submitCard(c);
+                                } else {
+                                  const o = c.querySelector('.option[data-val="' + String(q.answer) + '"]');
+                                  if (o) o.click();
+                                }
+                            }"""
+                        )
+                        desktop.wait_for_timeout(200)
+                        if desktop.locator(".q-card.active .guess-btn").count() != 1:
+                            raise RuntimeError("quiz is missing the guess toggle after a correct answer")
+                        desktop.locator(".q-card.active .guess-btn").first.click()
+                        desktop.wait_for_timeout(200)
+                        if desktop.evaluate("() => String(guessCnt.textContent)") != "1":
+                            raise RuntimeError("quiz guess toggle did not register")
+                        desktop.click('.mode-btn[data-mode="guess"]')
+                        desktop.wait_for_timeout(250)
+                        if desktop.evaluate("() => curList.length") != 1:
+                            raise RuntimeError("quiz guess mode did not filter to guessed questions")
+                        desktop.click('.mode-btn[data-mode="all"]')
+                        desktop.wait_for_timeout(150)
+                        # 打印双卷纸型：含答案卷页眉含「含答案」，空白练习卷页眉含「空白」
+                        if "含答案" not in desktop.evaluate("() => paperPara(true).title"):
+                            raise RuntimeError("quiz answer paper header is wrong")
+                        if "空白" not in desktop.evaluate("() => paperPara(false).title"):
+                            raise RuntimeError("quiz blank paper header is wrong")
+                        # 空筛选：面板整行显示占位，不被 grid 拆成竖排碎字
+                        desktop.fill("#qSearch", "zzz_no_such_question_zzz")
+                        desktop.wait_for_timeout(250)
+                        if desktop.locator(".qnav-empty").count() != 1:
+                            raise RuntimeError("quiz empty navigator has no placeholder")
+                        if desktop.evaluate(
+                            "() => getComputedStyle(document.querySelector('.qnav-empty')).gridColumnEnd"
+                        ) == "auto":
+                            raise RuntimeError("quiz empty navigator placeholder is not spanning the grid")
+                        desktop.fill("#qSearch", "")
+                        desktop.wait_for_timeout(200)
                         # 模拟考试：考试中不揭晓对错，交卷后弹结果
                         if desktop.locator(".mode-btn.exam-entry").count() != 1:
                             raise RuntimeError("quiz is missing the mock exam entry")
@@ -148,6 +206,10 @@ def run() -> int:
                             raise RuntimeError("quiz mock exam did not show its result")
                         if desktop.locator(".rep-cell").count() < 1:
                             raise RuntimeError("quiz mock exam result has no per-question grid")
+                        if desktop.locator(".rep-cell.is-blank").count() < 1:
+                            raise RuntimeError("quiz mock exam should mark unanswered questions as blank")
+                        if desktop.locator(".rep-cell.is-ok").count() < 1:
+                            raise RuntimeError("quiz mock exam should mark correct answers as ok")
                         desktop.evaluate("() => closeReport()")
                         desktop.wait_for_timeout(150)
                         # Word 双卷：导出的 .docx 必须是合法 OOXML 包
