@@ -961,7 +961,7 @@ def render(quiz: dict) -> str:
         '<div class="qnav-legend">'
         '<span><i></i>未答</span>'
         '<span><i class="lg-current"></i>当前</span>'
-        '<span><i class="lg-ok"></i>已答</span>'
+        '<span><i class="lg-ok"></i>答对</span>'
         '<span><i class="lg-wrong"></i>答错</span>'
         '<span><i class="lg-star"></i>标记</span>'
         '<span><i class="lg-guess"></i>蒙对</span>'
