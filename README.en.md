@@ -123,16 +123,22 @@ Legacy binary `.ppt` files may not be readable by `python-pptx` — convert them
 ## Repository layout
 
 ```text
-SKILL.md                         # agent workflow, JSON contracts, trigger description
-scripts/                         # scanning, extraction and the three HTML renderers
-showcase/
-├── fixture/course.json          # independently worded public demo data (skeleton + question-bank schema sample)
-├── build_showcase.py            # deterministic build + PII/static safety checks → showcase/output
-├── screenshot_showcase.py       # re-record the README previews (three products + wrong-answer export) → showcase/preview
-├── preview/*.png                # README previews (checked in)
-├── expected/                    # verification.json schema contract
-└── output/                      # build artifacts (gitignored, not committed)
-tests/                           # build regression + optional browser acceptance
+SKILL.md                    # Core: agent workflow + JSON contracts (skeleton/question fields, phases, triggers)
+scripts/                    # Core: the materials pipeline — four steps make one full run
+├── scan.py                 #   scan materials and group them by chapter
+├── extract.py              #   extract text, record image paths for the multimodal agent
+├── render_outline.py       #   render the study outline HTML
+├── render_quiz.py          #   render the quiz HTML (interactive answering / mock exam / exports)
+└── render_graph.py         #   render the knowledge graph HTML
+showcase/                   # Support: public demo and regression, proving the render chain is reproducible
+├── fixture/course.json     #   independently worded demo data (skeleton + question-bank schema sample)
+├── build_showcase.py       #   deterministic build + PII/static safety checks → showcase/output
+├── screenshot_showcase.py  #   re-record the README previews → showcase/preview
+├── preview/*.png           #   README previews (checked in)
+├── expected/               #   verification.json schema contract
+└── output/                 #   build artifacts (gitignored, not committed)
+tests/                      # Support: build regression + optional browser acceptance
+CHANGELOG.md                # Support: release notes
 ```
 
 ## Verification
