@@ -886,7 +886,7 @@ def render(quiz: dict) -> str:
         '<div class="menu-wrap">'
         '<button class="top-btn" id="paperBtn" type="button" onclick="toggleMenu()" aria-haspopup="true" aria-expanded="false" title="导出错题 / 打印双卷 / 导出 Word">导出 ⇩</button>'
         '<div class="menu" id="exportMenu" role="menu">'
-        '<div class="menu-tip">错题集 · 受「隐藏AI题」影响</div>'
+        '<div class="menu-tip">错题本 · 受「隐藏AI题」影响</div>'
         '<button type="button" id="exportWrongBtn" role="menuitem" onclick="exportWrong()" disabled>HTML · 全部错题</button>'
         '<button type="button" id="exportWrongWordBtn" role="menuitem" onclick="exportWrongWord(false)" disabled>Word · 空白练习卷</button>'
         '<button type="button" id="exportWrongWordAnsBtn" role="menuitem" onclick="exportWrongWord(true)" disabled>Word · 含答案卷</button>'
@@ -1199,11 +1199,11 @@ function exportWrong(){
     + '</div></div></div>';
   var html = '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">'
     + '<meta name="viewport" content="width=device-width, initial-scale=1">'
-    + '<title>'+name+'-错题</title><style>'+styles+extra+'</style></head>'
+    + '<title>'+name+'-错题本</title><style>'+styles+extra+'</style></head>'
     + '<body><div class="main">'+hdr+cards+'</div></body></html>';
   var href = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
   var a = document.createElement('a');
-  a.href = href; a.download = name + '-错题.html';
+  a.href = href; a.download = name + '-错题本.html';
   document.body.appendChild(a); a.click(); a.remove();
 }
 
@@ -2105,7 +2105,7 @@ function exportPaperWord(withAnswers){
   var c = qCard(curQ()) || document.querySelector('.q-card.active');
   flashHint(c, '已导出 Word：' + (withAnswers ? '含答案卷' : '空白练习卷'));
 }
-// 错题集 Word 双卷：只含当前错题本（受「隐藏AI题」影响），空白练习卷 / 含答案卷各一份
+// 错题本 Word 双卷：只含当前错题本（受「隐藏AI题」影响），空白练习卷 / 含答案卷各一份
 function exportWrongWord(withAnswers){
   toggleMenu(false);
   var list = wrongList();
@@ -2113,10 +2113,10 @@ function exportWrongWord(withAnswers){
   if(!list.length){ flashHint(c, '当前没有错题，先做错几道再来导出'); return; }
   var course = QUIZ.course || '复习题';
   downloadBlob(docxFromParas(paperWordParas(list,
-      course + (withAnswers ? ' · 错题集（含答案）' : ' · 错题集（空白练习卷）'),
+      course + (withAnswers ? ' · 错题本（含答案）' : ' · 错题本（空白练习卷）'),
       '共 ' + list.length + ' 道错题', withAnswers)),
-    safeFileName(course) + (withAnswers ? '-错题集(含答案).docx' : '-错题集(空白).docx'));
-  flashHint(c, '已导出 Word：错题集' + (withAnswers ? '含答案卷' : '空白练习卷'));
+    safeFileName(course) + (withAnswers ? '-错题本(含答案).docx' : '-错题本(空白).docx'));
+  flashHint(c, '已导出 Word：错题本' + (withAnswers ? '含答案卷' : '空白练习卷'));
 }
 
 // ── 模拟考试：限时、不即时判分，交卷后统一出分 ──
