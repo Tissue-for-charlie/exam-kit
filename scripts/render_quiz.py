@@ -887,12 +887,14 @@ def render(quiz: dict) -> str:
         '<button class="top-btn" id="paperBtn" type="button" onclick="toggleMenu()" aria-haspopup="true" aria-expanded="false" title="导出错题 / 打印双卷 / 导出 Word">导出 ⇩</button>'
         '<div class="menu" id="exportMenu" role="menu">'
         '<button type="button" id="exportWrongBtn" role="menuitem" onclick="exportWrong()" disabled>导出错题集（HTML）</button>'
+        '<button type="button" id="exportWrongWordBtn" role="menuitem" onclick="exportWrongWord(false)" disabled>导出错题集 · 空白练习卷（.docx）</button>'
+        '<button type="button" id="exportWrongWordAnsBtn" role="menuitem" onclick="exportWrongWord(true)" disabled>导出错题集 · 含答案卷（.docx）</button>'
         '<div class="menu-sep"></div>'
         '<div class="menu-tip">试卷 · 按当前筛选</div>'
-        '<button type="button" role="menuitem" onclick="printPaper(true)">打印 · 含答案卷</button>'
         '<button type="button" role="menuitem" onclick="printPaper(false)">打印 · 空白练习卷</button>'
-        '<button type="button" role="menuitem" onclick="exportPaperWord(true)">Word · 含答案卷（.docx）</button>'
+        '<button type="button" role="menuitem" onclick="printPaper(true)">打印 · 含答案卷</button>'
         '<button type="button" role="menuitem" onclick="exportPaperWord(false)">Word · 空白练习卷（.docx）</button>'
+        '<button type="button" role="menuitem" onclick="exportPaperWord(true)">Word · 含答案卷（.docx）</button>'
         '</div></div>'
         '<button class="top-btn" type="button" onclick="openReport()">掌握度报告</button>'
         '<button class="toggle-top-btn" id="toggleTopBtn" onclick="toggleTopBars()" title="显示/隐藏顶部栏" aria-label="显示/隐藏顶部栏">▲</button>'
@@ -1157,10 +1159,14 @@ function refresh(){
   else { rebuildList(); renderCurrent(); updateStats(); }
 }
 
-// ── 导出错题：把当前错题本（受去AI影响）生成一份自包含 HTML 下载 ──
-function exportWrong(){
+// ── 错题导出：HTML 单文件 / Word 双卷，都基于当前错题本（受「隐藏AI题」影响） ──
+function wrongList(){
   var items = [];
   aiPool().forEach(function(q){ if(wrongSet[q.id]) items.push(q); });
+  return items;
+}
+function exportWrong(){
+  var items = wrongList();
   if(!items.length){ alert('当前没有可导出的错题'); return; }
   var styles = Array.prototype.map.call(document.querySelectorAll('style'), function(s){return s.textContent;}).join('\n');
   var extra = '\n.quiz-top,#topBars,.mode-bar,.nav-fixed,.report-overlay,.backtop{display:none !important;}\n'
@@ -1371,7 +1377,10 @@ function updateStats(){
     if(rateEl.parentNode) rateEl.parentNode.classList.toggle('zero', done===0);
   }
   var wc = document.getElementById('wrongCnt'); if(wc) wc.textContent = wrong;
-  var eb = document.getElementById('exportWrongBtn'); if(eb) eb.disabled = (wrong===0);
+  // 错题的三个导出入口一起跟随错题数启用/禁用
+  ['exportWrongBtn', 'exportWrongWordBtn', 'exportWrongWordAnsBtn'].forEach(function(id){
+    var b = document.getElementById(id); if(b) b.disabled = (wrong===0);
+  });
   var sc = document.getElementById('starCnt'); if(sc) sc.textContent = countStars();
   var gc = document.getElementById('guessCnt'); if(gc) gc.textContent = countGuesses();
   var pct = objTotal?Math.round(done/objTotal*100):0;
@@ -2070,13 +2079,10 @@ function downloadBlob(blob, name){
   document.body.appendChild(a); a.click();
   setTimeout(function(){ rm(a.href); a.remove(); }, 3000);
 }
-function exportPaperWord(withAnswers){
-  toggleMenu(false);
-  if(!paperList().length){ paperEmptyHint(); return; }
-  var course = QUIZ.course || '复习题';
-  var paras = [{t: course + (withAnswers ? ' · 复习题（含答案）' : ' · 练习卷（空白）'), b:true},
-               {t: '共 ' + paperList().length + ' 题'}];
-  paperList().forEach(function(q, i){
+// Word 双卷共用：题目列表 → docx 段落数组（含答案卷多出答案与解析）
+function paperWordParas(list, title, sub, withAnswers){
+  var paras = [{t: title, b:true}, {t: sub}];
+  list.forEach(function(q, i){
     paras.push({t: (i+1) + '. ' + paperStem(q)});
     (q.options||[]).forEach(function(o, k){ paras.push({t: String.fromCharCode(65+k) + '. ' + o, ind:227}); });
     if(withAnswers){
@@ -2084,10 +2090,32 @@ function exportPaperWord(withAnswers){
       if(q.explanation) paras.push({t: '解析：' + q.explanation, ind:227});
     }
   });
-  downloadBlob(docxFromParas(paras),
+  return paras;
+}
+function exportPaperWord(withAnswers){
+  toggleMenu(false);
+  var list = paperList();
+  if(!list.length){ paperEmptyHint(); return; }
+  var course = QUIZ.course || '复习题';
+  downloadBlob(docxFromParas(paperWordParas(list,
+      course + (withAnswers ? ' · 复习题（含答案）' : ' · 练习卷（空白）'),
+      '共 ' + list.length + ' 题', withAnswers)),
     safeFileName(course) + (withAnswers ? '-复习题(含答案).docx' : '-练习卷(空白).docx'));
   var c = qCard(curQ()) || document.querySelector('.q-card.active');
   flashHint(c, '已导出 Word：' + (withAnswers ? '含答案卷' : '空白练习卷'));
+}
+// 错题集 Word 双卷：只含当前错题本（受「隐藏AI题」影响），空白练习卷 / 含答案卷各一份
+function exportWrongWord(withAnswers){
+  toggleMenu(false);
+  var list = wrongList();
+  var c = qCard(curQ()) || document.querySelector('.q-card.active');
+  if(!list.length){ flashHint(c, '当前没有错题，先做错几道再来导出'); return; }
+  var course = QUIZ.course || '复习题';
+  downloadBlob(docxFromParas(paperWordParas(list,
+      course + (withAnswers ? ' · 错题集（含答案）' : ' · 错题集（空白练习卷）'),
+      '共 ' + list.length + ' 道错题', withAnswers)),
+    safeFileName(course) + (withAnswers ? '-错题集(含答案).docx' : '-错题集(空白).docx'));
+  flashHint(c, '已导出 Word：错题集' + (withAnswers ? '含答案卷' : '空白练习卷'));
 }
 
 // ── 模拟考试：限时、不即时判分，交卷后统一出分 ──
