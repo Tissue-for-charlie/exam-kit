@@ -1927,7 +1927,7 @@ function paperList(){ return navList; }
 function paperPara(withAnswers){
   var course = QUIZ.course || '复习题';
   return {title: course + (withAnswers ? ' · 复习题（含答案）' : ' · 复习题（空白）'),
-          sub: '共 ' + paperList().length + ' 题' + (withAnswers ? ' · 含答案' : '')};
+          sub: '共 ' + paperList().length + ' 题'};
 }
 function buildPaper(withAnswers){
   var meta = paperPara(withAnswers);
@@ -2099,9 +2099,9 @@ function exportPaperWord(withAnswers){
   if(!list.length){ paperEmptyHint(); return; }
   var course = QUIZ.course || '复习题';
   downloadBlob(docxFromParas(paperWordParas(list,
-      course + (withAnswers ? ' · 复习题（含答案）' : ' · 练习卷（空白）'),
+      course + (withAnswers ? ' · 复习题（含答案）' : ' · 复习题（空白）'),
       '共 ' + list.length + ' 题', withAnswers)),
-    safeFileName(course) + (withAnswers ? '-复习题(含答案).docx' : '-练习卷(空白).docx'));
+    safeFileName(course) + (withAnswers ? '-复习题(含答案).docx' : '-复习题(空白).docx'));
   var c = qCard(curQ()) || document.querySelector('.q-card.active');
   flashHint(c, '已导出 Word：' + (withAnswers ? '含答案卷' : '空白练习卷'));
 }
