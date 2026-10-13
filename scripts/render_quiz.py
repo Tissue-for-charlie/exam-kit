@@ -1926,8 +1926,8 @@ function paperStem(q){
 function paperList(){ return navList; }
 function paperPara(withAnswers){
   var course = QUIZ.course || '复习题';
-  return {title: course + (withAnswers ? ' · 复习题（含答案）' : ' · 练习卷（空白）'),
-          sub: '共 ' + paperList().length + ' 题' + (withAnswers ? ' · 含答案' : ' · 空白卷')};
+  return {title: course + (withAnswers ? ' · 复习题（含答案）' : ' · 复习题（空白）'),
+          sub: '共 ' + paperList().length + ' 题' + (withAnswers ? ' · 含答案' : '')};
 }
 function buildPaper(withAnswers){
   var meta = paperPara(withAnswers);
