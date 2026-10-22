@@ -120,6 +120,7 @@ body.topbars-hidden .filter-badge { display: inline-flex; align-items: center; g
 .top-btn:active { transform: scale(.96); }
 .top-btn.active { background: #fff; color: #16213e; border-color: #fff; font-weight: 700; }
 .top-btn:disabled { opacity: .45; cursor: not-allowed; background: rgba(255,255,255,.08); }
+[hidden] { display: none !important; }
 
 /* 顶部可折叠栏（统计条 + 进度 + tab + 模式） */
 #topBars { overflow: hidden; transition: max-height .32s var(--ease), opacity .24s var(--ease); max-height: 400px; opacity: 1; }
@@ -305,14 +306,44 @@ body:not(.fast) .quiz-list .q-card .q-actions .btn-primary { display: none; }
 .answer-static {
   display: none; margin-top: 14px; padding: 14px 16px; border-radius: var(--r-sm);
   background: var(--line-2); border-left: 3px solid var(--accent2); font-size: 14px; line-height: 1.75;
+  overflow-wrap: anywhere;
 }
 .answer-static.show { display: block; animation: riseIn .26s var(--ease); }
 @keyframes riseIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .as-ans { font-weight: 600; color: var(--ink); }
 .as-ans .v { color: var(--correct); }
+.as-ans-label { color: var(--ink); font-weight: 700; margin-bottom: 4px; }
 .as-exp { margin-top: 6px; }
 .as-exp b, .as-pit b { color: var(--ink); }
 .as-pit { margin-top: 8px; padding: 6px 10px; background: #fdf3e3; border-radius: 6px; border-left: 3px solid var(--partial); font-size: 13px; color: #7d5c10; }
+
+/* 答案富文本：编号成列表、代码保留缩进；所有内容都先转义再生成结构 */
+.as-rich { min-width: 0; overflow-wrap: anywhere; }
+.as-rich > :first-child { margin-top: 0; }
+.as-rich > * + * { margin-top: 6px; }
+.as-p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.as-p + .as-p { margin-top: 6px; }
+.as-para-gap { height: 4px; }
+.as-list { display: grid; gap: 6px; min-width: 0; margin-top: 2px; }
+.as-item { display: grid; grid-template-columns: 1.6em minmax(0, 1fr); gap: 6px; align-items: start; min-width: 0; }
+.as-item-mark { font-weight: 700; line-height: 1.75; }
+.as-item-body { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.as-item-body .as-code { margin: 4px 0 2px; }
+.as-code {
+  max-width: 100%; margin: 8px 0; padding: 10px 12px; overflow-x: auto; overflow-y: hidden;
+  background: #fff; border: 1px solid var(--line); border-radius: 6px; color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 12.5px; font-weight: 400; line-height: 1.6; white-space: pre; tab-size: 2;
+  -webkit-overflow-scrolling: touch;
+}
+.as-code code { color: inherit; font: inherit; white-space: inherit; }
+.as-code-label { margin: 8px 0 2px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.as-code-label + .as-code { margin-top: 3px; }
+.as-inline-code {
+  padding: 1px 5px; border-radius: 4px; background: rgba(21,101,192,.08); color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: .92em;
+}
+.as-rich strong { color: var(--ink); font-weight: 700; }
 
 /* 空状态：说清「为什么空」并给一个出口，别只丢一句灰字 */
 .empty { text-align: center; color: var(--muted); padding: 56px 16px; font-size: 14px; }
@@ -371,6 +402,7 @@ body.qnav-open .qnav { transform: none; visibility: visible; }
 .qnav-cell:active { transform: scale(.94); }
 .qnav-cell.is-ok { background: var(--correct); border-color: var(--correct); color: #fff; }
 .qnav-cell.is-wrong { background: var(--wrong); border-color: var(--wrong); color: #fff; }
+.qnav-cell.is-blank { background: #f7f8fa; border-color: var(--line); color: var(--muted); }
 .qnav-cell.is-current { background: var(--accent2); border-color: var(--accent2); color: #fff; box-shadow: 0 0 0 2px rgba(21,101,192,.28); }
 .qnav-cell.is-picked { background: #e8f0fb; border-color: var(--accent2); color: var(--accent2); }
 .qnav-empty { grid-column: 1 / -1; color: var(--muted); font-size: 13px; text-align: center; padding: 24px 10px; line-height: 1.8; }
@@ -380,6 +412,7 @@ body.qnav-open .qnav { transform: none; visibility: visible; }
 .qnav-legend i.lg-current { background: var(--accent2); border-color: var(--accent2); }
 .qnav-legend i.lg-ok { background: var(--correct); border-color: var(--correct); }
 .qnav-legend i.lg-wrong { background: var(--wrong); border-color: var(--wrong); }
+.qnav-legend i.lg-blank { background: #f7f8fa; }
 /* 折叠把手：收起贴右缘，展开移到面板左缘 */
 .qnav-toggle {
   position: fixed; top: 50%; right: 0; transform: translateY(-50%); z-index: 270;
@@ -438,11 +471,33 @@ body.qnav-open .qnav { transform: none; visibility: visible; }
 .report-empty { color: var(--muted); }
 table.kc { width: 100%; border-collapse: collapse; margin-top: 8px; }
 table.kc th, table.kc td { border: 1px solid var(--line); padding: 8px 10px; font-size: 13.5px; text-align: left; }
+table.kc th:not(.kc-score), table.kc td:not(.kc-score) { overflow-wrap: anywhere; }
 table.kc th { background: var(--line-2); }
+.kc-score { min-width: 68px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kc-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .weak { color: var(--wrong); font-weight: 600; }
 .bar { height: 8px; background: var(--line-2); border-radius: 4px; overflow: hidden; min-width: 80px; }
 .bar i { display: block; height: 100%; background: var(--accent2); }
 .bar i.weak { background: var(--wrong); }
+
+/* 导出结果：页面级浮层，不插入题卡、不推动正文 */
+.export-toast {
+  position: fixed; top: max(14px, env(safe-area-inset-top)); left: 50%; z-index: 900;
+  width: max-content; max-width: min(92vw, 520px); padding: 10px 18px;
+  border-radius: 999px; background: #23352a; color: #fff; border: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 10px 30px rgba(0,0,0,.24); font-size: 13.5px; font-weight: 600; line-height: 1.45;
+  text-align: center; overflow-wrap: anywhere; pointer-events: none;
+  opacity: 0; transform: translate(-50%, -10px);
+  transition: opacity .18s ease, transform .22s var(--ease);
+}
+.export-toast.show { opacity: 1; transform: translate(-50%, 0); }
+@media (max-width: 640px) {
+  .export-toast {
+    top: auto; bottom: calc(88px + env(safe-area-inset-bottom)); max-width: calc(100vw - 24px);
+    padding: 9px 14px; border-radius: 14px; font-size: 12.5px; transform: translate(-50%, 10px);
+  }
+  .export-toast.show { transform: translate(-50%, 0); }
+}
 
 /* ── 标记 / 搜索 / 蒙对 / 模拟考试 / 导出菜单 ── */
 /* 顶部「导出」下拉：错题、双卷打印、双卷 Word 都收在这里，顶栏按钮不膨胀 */
@@ -532,6 +587,7 @@ body.exam-on .exam-strip { display: flex; }
 .exam-strip .btn { flex: none; min-width: 0; padding: 5px 12px; font-size: 12px; }
 body.exam-on .q-result, body.exam-on .answer-static, body.exam-on .redo-btn,
 body.exam-on .guess-btn, body.exam-on .q-actions .btn-primary, body.exam-on .auto-hint { display: none !important; }
+body.exam-on #submitBtn { display: none !important; }
 body.exam-on .stat-item.green, body.exam-on .stat-item.rate { display: none; }
 .exam-strip .btn-outline { color: #fff; border-color: rgba(255,255,255,.5); background: transparent; }
 /* 考试中允许改答案：抹掉上一次判分留下的配色（当前选中态保留） */
@@ -604,6 +660,8 @@ body.exam-on .mode-btn.exam-entry { display: none; }
   .report-card { max-height: 90vh; border-radius: 14px; }
   .report-head { padding: 14px 16px; }
   .report-body { padding: 12px 14px 18px; }
+  .as-item { grid-template-columns: 1.35em minmax(0, 1fr); gap: 5px; }
+  .as-code { padding: 9px 10px; font-size: 12px; margin: 6px 0; }
   /* 输入框字号 ≥16 防 iOS 自动缩放；不超容器宽、页面不横向溢出 */
   .fill-input, .subj-input { font-size: 16px; max-width: 100%; }
   .exam-min { font-size: 16px; }
@@ -627,6 +685,7 @@ body.exam-on .mode-btn.exam-entry { display: none; }
   .exam-min { font-size: 16px; }
   .subj-input { min-height: 116px; }
   .answer-static { font-size: 14px; }
+  .as-code { padding: 9px 10px; font-size: 12px; }
   .report-card { max-height: 92vh; }
   body { overflow-x: hidden; }
   .nav-fixed .btn { min-width: 88px; padding: 10px 8px; font-size: 13.5px; }
@@ -682,12 +741,13 @@ body.exam-on .mode-btn.exam-entry { display: none; }
 @media print {
   body { background: #fff; }
   .header, #topBars, .report-overlay, .nav-fixed, .q-actions, .q-result,
-  .qnav, .qnav-toggle, .qnav-overlay, .backtop, .inline-hint, .star-btn,
+  .qnav, .qnav-toggle, .qnav-overlay, .backtop, .inline-hint, .star-btn, .export-toast,
   .menu-wrap, .exam-strip { display: none !important; }
   .main { max-width: none; padding: 0; }
   .q-card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
   .quiz-list .q-card { display: block; }
   .answer-static { display: block !important; }
+  .as-code { white-space: pre-wrap; overflow: visible; break-inside: avoid; }
   .option.disabled, .option { pointer-events: none; }
 }
 """
@@ -718,13 +778,218 @@ def _fmt_answer(q):
     return str(a)
 
 
+_CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"
+_FENCE_RE = re.compile(r"```[ \t]*([A-Za-z0-9_+-]*)[ \t]*\n(.*?)```", re.S)
+_CIRCLED_RE = re.compile(r"(?=[" + re.escape(_CIRCLED) + r"])")
+_ASDF_LINE_RE = re.compile(r"^\s*((?:\d+[.、)]|（\d+）|\(\d+\)))\s*(.+)$")
+_BULLET_LINE_RE = re.compile(r"^\s*([-*•])\s+(.+)$")
+_SQL_START_RE = re.compile(
+    r"^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|CALL|USE|SHOW|"
+    r"DESC(?:RIBE)?|EXPLAIN|WITH|COMMIT|ROLLBACK|SAVEPOINT|START\s+TRANSACTION|"
+    r"DELIMITER|BEGIN|END|DECLARE|SET|LOCK|UNLOCK)\b",
+    re.I,
+)
+_CODE_START_RE = re.compile(
+    r"^(#include|#define|import|from|def|class|for|while|if|elif|else|try|except|finally|return|"
+    r"public|private|protected|static|void|int|char|float|double|function|const|let|var|async)\b",
+    re.I,
+)
+_CODE_TYPE_RE = re.compile(
+    r"\b(PRIMARY\s+KEY|FOREIGN\s+KEY|REFERENCES|NOT\s+NULL|DEFAULT|CHECK|VARCHAR|CHAR|ENUM|"
+    r"INT|INTEGER|DECIMAL|DATE|DATETIME|TEXT)\b",
+    re.I,
+)
+_CLI_START_RE = re.compile(
+    r"^(?:\$\s+)?(?:sudo\s+)?(mysqldump|mysql|psql|sqlite3|git|npm|npx|pip3?|python3?|java|javac|"
+    r"gcc|g\+\+|mvn|gradle|docker|kubectl|cd|ls|cp|mv|rm|mkdir|cat|echo|curl|wget)\b",
+    re.I,
+)
+_CODE_LEAD_RE = re.compile(r"^([\u4e00-\u9fff][^：:\n]{0,14}[：:])\s*(\S.*)$")
+
+
+def _looks_like_code_line(line: str) -> bool:
+    """判断一行是否明显是代码；宁可少判，也不要把中文解析整段染成代码块。"""
+    raw = line.rstrip()
+    s = raw.strip()
+    if not s:
+        return False
+    s = s.lstrip(_CIRCLED + " \t")
+    if not s:
+        return False
+    cjk_n = len(re.findall(r"[\u4e00-\u9fff]", s))
+    if s.startswith(("--", "//", "#include", "#define", "<?", "</", "$ ")):
+        return True
+    if _CLI_START_RE.match(s) and re.search(r"(?:\s-{1,2}[\w-]+|[/\\<>|])", s):
+        return True
+    if _SQL_START_RE.match(s):
+        # SQL 关键字后面必须出现代码标点，或整行几乎都是 ASCII 代码字符。
+        if re.search(r"[;()=]", s):
+            return True
+        if re.fullmatch(r"[\x00-\x7f\s;,*.'\"`(){}\[\]=<>+\-/%]+", s):
+            return True
+    if _CODE_START_RE.match(s) and re.search(r"[{}():=;]", s):
+        if cjk_n >= 6 and not re.search(r"[;{}]", s):
+            return False
+        return True
+    if _CODE_TYPE_RE.search(s) and re.search(r"[(),;]", s):
+        return True
+    # 行内出现了明确 SQL 语句且以分号收尾（允许前面有“完整：”等提示词）。
+    if re.search(r"\b(CREATE|ALTER|DROP|INSERT|UPDATE|DELETE|SELECT|GRANT|REVOKE)\b", s, re.I) \
+            and s.endswith(";") and re.search(r"[()=*]", s):
+        return True
+    if re.match(r"^\s{2,}\S", raw) and re.search(r"[{}();=:,.'\"]", s):
+        return True
+    return False
+
+
+def _is_code_block(lines: list[str]) -> bool:
+    body = [line for line in lines if line.strip()]
+    if not body:
+        return False
+    if len(body) == 1:
+        return _looks_like_code_line(body[0])
+    code_n = sum(1 for line in body if _looks_like_code_line(line))
+    indented_n = sum(1 for line in body if re.match(r"^\s{2,}\S", line))
+    return code_n >= max(1, (len(body) * 3 + 4) // 5) and (code_n == len(body) or indented_n > 0)
+
+
+def _inline_html(text: str) -> str:
+    """先转义，再恢复受控的行内代码与粗体标记。"""
+    out = html.escape(text)
+    out = re.sub(r"`([^`\n]+)`", r'<code class="as-inline-code">\1</code>', out)
+    out = re.sub(r"\*\*([^*\n]+)\*\*", r"<strong>\1</strong>", out)
+    return out
+
+
+def _code_html(text: str, lang: str = "", split_labels: bool = False) -> str:
+    safe_lang = re.sub(r"[^A-Za-z0-9_+-]", "", lang or "")
+    cls = "as-code" + (f" language-{safe_lang}" if safe_lang else "")
+
+    def block(chunk: str) -> str:
+        chunk = chunk.strip("\n").rstrip()
+        if not chunk:
+            return ""
+        return f'<pre class="{cls}"><code>{html.escape(chunk)}</code></pre>'
+
+    if not split_labels:
+        return block(text)
+    parts, buffer = [], []
+    for line in text.splitlines():
+        match = _CODE_LEAD_RE.match(line)
+        if match and _looks_like_code_line(match.group(2)):
+            chunk = "\n".join(buffer).strip("\n")
+            if chunk:
+                parts.append(block(chunk))
+            buffer = [match.group(2)]
+            parts.append('<div class="as-code-label">' + html.escape(match.group(1).strip()) + "</div>")
+        else:
+            buffer.append(line)
+    chunk = "\n".join(buffer).strip("\n")
+    if chunk:
+        parts.append(block(chunk))
+    return "".join(parts) or block(text)
+
+
+def _plain_html(text: str) -> str:
+    return _inline_html(text).replace("\n", "<br>")
+
+
+def _list_item_html(mark: str, content: str) -> str:
+    body = content.strip("\n")
+    if "```" in body:
+        inner = _rich_text(body)
+    elif _is_code_block(body.splitlines()):
+        inner = _code_html(body, split_labels=True)
+    else:
+        inner = _plain_html(body)
+    return ('<div class="as-item"><span class="as-item-mark">' + html.escape(mark)
+            + '</span><div class="as-item-body">' + inner + '</div></div>')
+
+
+def _circled_list_html(text: str) -> str:
+    chunks = [c for c in _CIRCLED_RE.split(text.strip()) if c.strip()]
+    if len(chunks) < 2:
+        return ""
+    intro = ""
+    if chunks[0].lstrip()[:1] not in _CIRCLED:
+        intro = _plain_html(chunks.pop(0).strip()) + '<div class="as-para-gap"></div>'
+    rows = []
+    for chunk in chunks:
+        mark = chunk.lstrip()[:1]
+        content = chunk.lstrip()[1:].lstrip("：: \t")
+        if mark in _CIRCLED:
+            rows.append(_list_item_html(mark, content))
+    if not rows:
+        return ""
+    return intro + '<div class="as-list">' + "".join(rows) + "</div>"
+
+
+def _line_list_html(lines: list[str]) -> str:
+    rows, current = [], None
+    for line in lines:
+        m = _ASDF_LINE_RE.match(line) or _BULLET_LINE_RE.match(line)
+        if m:
+            if current:
+                rows.append(current)
+            current = [m.group(1), m.group(2)]
+        elif current is not None:
+            current[1] += "\n" + line if line.strip() else "\n"
+        elif line.strip():
+            return ""
+    if current:
+        rows.append(current)
+    rows = [_list_item_html(mark, body.strip("\n")) for mark, body in rows]
+    return '<div class="as-list">' + "".join(rows) + "</div>" if rows else ""
+
+
+def _text_block_html(text: str) -> str:
+    text = text.strip("\n")
+    if not text.strip():
+        return ""
+    circled = _circled_list_html(text)
+    if circled:
+        return circled
+    lines = text.splitlines()
+    if _is_code_block(lines):
+        return _code_html(text, split_labels=True)
+    blocks = [block for block in re.split(r"\n[ \t]*\n+", text) if block.strip()]
+    if len(blocks) > 1:
+        return "".join(_text_block_html(block) for block in blocks)
+    numbered = _line_list_html(lines)
+    if numbered:
+        return numbered
+    return '<div class="as-p">' + _plain_html(text) + "</div>"
+
+
+def _rich_text(text: str) -> str:
+    """把答案类纯文本转成安全的结构化 HTML。"""
+    source = str(text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not source:
+        return ""
+    out = []
+    pos = 0
+    for match in _FENCE_RE.finditer(source):
+        before = source[pos:match.start()]
+        if before.strip():
+            out.append(_text_block_html(before))
+        out.append(_code_html(match.group(2), match.group(1)))
+        pos = match.end()
+    tail = source[pos:]
+    if tail.strip():
+        out.append(_text_block_html(tail))
+    return "".join(out) or _plain_html(source)
+
+
 def _answer_static(q):
     """正确答案 + 解析 + 易错点（打印与提交后展示共用）。"""
-    parts = [f'<div class="as-ans">正确答案：<span class="v">{html.escape(_fmt_answer(q))}</span></div>']
+    parts = [f'<div class="as-ans"><div class="as-ans-label">正确答案：</div>'
+             f'<div class="v as-rich">{_rich_text(_fmt_answer(q))}</div></div>']
     if q.get("explanation"):
-        parts.append(f'<div class="as-exp"><b>解析：</b>{html.escape(q["explanation"])}</div>')
+        parts.append(f'<div class="as-exp"><b>解析：</b><div class="as-rich">'
+                     f'{_rich_text(q["explanation"])}</div></div>')
     if q.get("pitfall"):
-        parts.append(f'<div class="as-pit"><b>易错：</b>{html.escape(q["pitfall"])}</div>')
+        parts.append(f'<div class="as-pit"><b>易错：</b><div class="as-rich">'
+                     f'{_rich_text(q["pitfall"])}</div></div>')
     return f'<div class="answer-static">{"".join(parts)}</div>'
 
 
@@ -898,6 +1163,7 @@ def render(quiz: dict) -> str:
         '<button type="button" role="menuitem" onclick="exportPaperWord(true)">Word · 含答案卷</button>'
         '</div></div>'
         '<button class="top-btn" type="button" onclick="openReport()">掌握度报告</button>'
+        '<button class="top-btn" id="examResultBtn" type="button" onclick="openExamResult()" hidden>考试结果</button>'
         '<button class="toggle-top-btn" id="toggleTopBtn" onclick="toggleTopBars()" title="显示/隐藏顶部栏" aria-label="显示/隐藏顶部栏">▲</button>'
         '</div>'
         '<div class="filter-badge" id="filterSummary"></div>'
@@ -934,6 +1200,7 @@ def render(quiz: dict) -> str:
         '<button class="mode-btn" data-mode="wrong" onclick="setMode(this)">错题本<span class="cnt" id="wrongCnt">0</span></button>'
         '<button class="mode-btn" data-mode="star" onclick="setMode(this)"><i class="star-ico"></i>标记<span class="cnt" id="starCnt">0</span></button>'
         '<button class="mode-btn" data-mode="guess" onclick="setMode(this)"><i class="guess-dot"></i>蒙对<span class="cnt" id="guessCnt">0</span></button>'
+        '<button class="mode-btn exam-review" id="examReviewBtn" data-mode="exam" onclick="setMode(this)" hidden>本次考试<span class="cnt" id="examReviewCnt">0</span></button>'
         '<span class="spacer"></span>'
         '<button class="mode-btn exam-entry" type="button" onclick="openExamSetup()" title="限时模拟考试：交卷后统一判分">模拟考试</button>'
         '</div>'
@@ -961,7 +1228,7 @@ def render(quiz: dict) -> str:
         '<div class="qnav-head"><h2>题号导航</h2><span class="qnav-count" id="qnavCount"></span></div>'
         '<div class="qnav-body"><div class="qnav-grid" id="qnavGrid" role="tablist" aria-label="题号" data-roving-group></div></div>'
         '<div class="qnav-legend">'
-        '<span><i></i>未答</span>'
+        '<span><i class="lg-blank"></i>未答</span>'
         '<span><i class="lg-current"></i>当前</span>'
         '<span><i class="lg-ok"></i>答对</span>'
         '<span><i class="lg-wrong"></i>答错</span>'
@@ -995,6 +1262,7 @@ def render(quiz: dict) -> str:
         '</div>'
         '</div>'
     )
+    parts.append('<div class="export-toast" id="exportToast" role="status" aria-live="polite" aria-atomic="true"></div>')
 
     return "\n".join(parts)
 
@@ -1064,6 +1332,16 @@ function shuffle(a){
   return a;
 }
 function rebuildList(){
+  // 本次考试是一份固定试卷：顺序与交卷结果、题号导航必须完全一致，
+  // 也不再受题型/章节/搜索筛选影响，避免回看时题号错位或缺题。
+  if(state.mode==='exam'){
+    var examSet = exam.set || {};
+    curList = (exam.list || []).filter(function(q){ return !!examSet[q.id]; });
+    if(curList.length===0) state.idx = -1;
+    else if(state.idx >= curList.length) state.idx = curList.length-1;
+    if(state.idx < 0) state.idx = curList.length?0:-1;
+    return;
+  }
   var L = aiPool().filter(function(q){
     if(state.type==='obj') return !SUBJ[q.type];          // 客观题
     if(state.type==='subj') return !!SUBJ[q.type];
@@ -1074,7 +1352,6 @@ function rebuildList(){
     if(state.mode==='unanswered') return !submitted[q.id];
     if(state.mode==='star') return !!starSet[q.id];
     if(state.mode==='guess') return !!guessSet[q.id];
-    if(state.mode==='exam') return !!exam.set[q.id];
     return true;
   });
   if(state.mode==='random') L = shuffle(L.slice());
@@ -1230,7 +1507,7 @@ function renderCurrent(){
   var sb = document.getElementById('submitBtn');
   if(sb){
     var needSubmit = false;
-    if(q && (q.type==='multi' || q.type==='fill' || SUBJ[q.type])){
+    if(!exam.on && q && (q.type==='multi' || q.type==='fill' || SUBJ[q.type])){
       needSubmit = !submitted[q.id];
     }
     sb.style.display = needSubmit ? '' : 'none';
@@ -1313,7 +1590,7 @@ function paintReveal(card, q, correct, blank){
   markAnsweredCard(card);
 }
 function submitCard(card){
-  if(!card) return;
+  if(!card || exam.on) return;   // 考试中只记录作答，统一交卷判分
   var qid = card.getAttribute('data-qid');
   var q = null;
   for(var i=0;i<ALL.length;i++){ if(ALL[i].id===qid){ q=ALL[i]; break; } }
@@ -1366,16 +1643,35 @@ function updateStats(){
     if(!submitted[q.id]) return;
     done++; if(results[q.id]) right++; else wrong++;
   });
+  var showDone=done, showRight=right, showTotal=objTotal;
+  var showRate=done ? Math.round(right/done*100) : null;
+  var pct=objTotal ? Math.round(done/objTotal*100) : 0;
+  // 「本次考试」视图：顶部口径与结果弹窗一致，不让全量题库把成绩冲淡
+  if(!exam.on && exam.finished && exam.result && state.mode==='exam'){
+    var er=exam.result;
+    showTotal=exam.total || 0;
+    showDone=Math.max(0, showTotal - (er.blank||0));
+    showRight=er.right||0;
+    showRate=showTotal ? Math.round(showRight/showTotal*100) : null;
+    pct=100;
+  }
+  // 考试中：统计条与顶栏细线改报「考试进度」，不泄露对错
+  if(exam.on && exam.total){
+    var ea=examAnswered();
+    showDone=ea; showTotal=exam.total;
+    pct=Math.round(ea/exam.total*100);
+    var uEl=document.getElementById('examUnanswered'); if(uEl) uEl.textContent=Math.max(0, exam.total-ea);
+  }
   var dEl=document.getElementById('statDone');
   var tEl=document.getElementById('statTotal');
   var rEl=document.getElementById('statRight');
   var rateEl=document.getElementById('statRate');
-  if(dEl) dEl.textContent = done;
-  if(tEl) tEl.textContent = '/' + objTotal;
-  if(rEl){ rEl.textContent = right; if(rEl.parentNode) rEl.parentNode.classList.toggle('zero', right===0); }
+  if(dEl) dEl.textContent = showDone;
+  if(tEl) tEl.textContent = '/' + showTotal;
+  if(rEl){ rEl.textContent = showRight; if(rEl.parentNode) rEl.parentNode.classList.toggle('zero', showRight===0); }
   if(rateEl){
-    rateEl.textContent = done ? Math.round(right/done*100)+'%' : '—';
-    if(rateEl.parentNode) rateEl.parentNode.classList.toggle('zero', done===0);
+    rateEl.textContent = showRate===null ? '—' : showRate+'%';
+    if(rateEl.parentNode) rateEl.parentNode.classList.toggle('zero', showRate===null);
   }
   var wc = document.getElementById('wrongCnt'); if(wc) wc.textContent = wrong;
   // 错题的三个导出入口一起跟随错题数启用/禁用
@@ -1384,15 +1680,6 @@ function updateStats(){
   });
   var sc = document.getElementById('starCnt'); if(sc) sc.textContent = countStars();
   var gc = document.getElementById('guessCnt'); if(gc) gc.textContent = countGuesses();
-  var pct = objTotal?Math.round(done/objTotal*100):0;
-  // 考试中：统计条与顶栏细线改报「考试进度」，不泄露对错
-  if(exam.on && exam.total){
-    var ea = examAnswered();
-    if(dEl) dEl.textContent = ea;
-    if(tEl) tEl.textContent = '/' + exam.total;
-    pct = Math.round(ea/exam.total*100);
-    var uEl = document.getElementById('examUnanswered'); if(uEl) uEl.textContent = Math.max(0, exam.total - ea);
-  }
   var hp = document.getElementById('headerProgress'); if(hp) hp.style.width = pct + '%';
   paintPanelCells();
 }
@@ -1402,7 +1689,7 @@ function updateFilterSummary(){
   var el = document.getElementById('filterSummary');
   if(!el) return;
   var TYPE_LABEL = {all:'全部题型', choice:'单选题', multi:'多选题', tf:'判断题', fill:'填空题', obj:'客观题', subj:'主观题'};
-  var MODE_LABEL = {all:'全部题目', random:'随机顺序', fast:'极速刷题', unanswered:'未作答', wrong:'错题本', star:'标记', guess:'蒙对', exam:'模拟考试'};
+  var MODE_LABEL = {all:'全部题目', random:'随机顺序', fast:'极速刷题', unanswered:'未作答', wrong:'错题本', star:'标记', guess:'蒙对', exam:(exam.finished?'本次考试':'模拟考试')};
   var chap = '全部章节';
   if(state.chapter !== 'all'){
     var cb = document.querySelector('.chapter-nav button.active');
@@ -1433,6 +1720,17 @@ function flashHint(card, msg){
   h.classList.add('show');
   if(h._t) clearTimeout(h._t);
   h._t = setTimeout(function(){ h.classList.remove('show'); }, 2400);
+}
+var toastTimer = null;
+function showToast(msg){
+  var el = document.getElementById('exportToast');
+  if(!el) return;
+  el.textContent = msg;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2800);
 }
 
 // ── 空状态：说清「为什么空」并给一个出口 ──
@@ -1562,6 +1860,9 @@ function navCellClass(q){
   var cls = 'qnav-cell';
   if(exam.on){
     if(qHasAnswer(q)) cls += ' is-picked';        // 考试中不揭晓对错，只标「已作答」
+  } else if(exam.finished && exam.result && state.mode==='exam'){
+    var mark=(exam.result.marks||{})[q.id];
+    cls += (mark==='ok') ? ' is-ok' : (mark==='wrong') ? ' is-wrong' : ' is-blank';
   } else if(submitted[q.id]){
     cls += (SUBJ[q.type] || results[q.id]) ? ' is-ok' : ' is-wrong';
   }
@@ -1594,7 +1895,9 @@ function renderPanel(){
   navById = {};
   navList.forEach(function(q){ navById[q.id] = q; });
   var cnt = document.getElementById('qnavCount');
-  if(cnt) cnt.textContent = navList.length ? ('共 ' + navList.length + ' 题') : '';
+  if(cnt) cnt.textContent = navList.length
+    ? ((state.mode==='exam' && exam.finished ? '本次考试 · 共 ' : '共 ') + navList.length + ' 题')
+    : '';
   var grid = document.getElementById('qnavGrid');
   if(grid){
     grid.innerHTML = navList.length
@@ -1734,20 +2037,25 @@ function toggleTopBars(force){
   document.body.classList.toggle('topbars-hidden', hidden);
   updateFilterSummary();
 }
+function reportObjectivePool(){
+  // 本次考试报告只看这份试卷；平时看当前筛选后的客观题。
+  if(state.mode==='exam' && (exam.on || (exam.finished && exam.result))) return exam.list || [];
+  return examPool();
+}
 function renderReport(){
   var kc = {}, kcChap = {};
-  ALL.forEach(function(q){
-    kcChap[q.kc_id || ''] = q.chapterLabel || '';
-    if(SUBJ[q.type]) return;
+  var total=0, max=0;
+  ALL.forEach(function(q){ kcChap[q.kc_id || ''] = q.chapterLabel || ''; });
+  reportObjectivePool().forEach(function(q){
+    var pts = q.points || 1;
+    max += pts;                     // 分母跟着本次考试 / 当前筛选题池动态计算
     if(!submitted[q.id]) return;
     var k = q.kc_id || '未分类';
     kc[k] = kc[k] || {score:0, max:0};
-    kc[k].max += (q.points||1);
-    if(results[q.id]) kc[k].score += (q.points||1);
+    kc[k].max += pts;
+    if(results[q.id]){ kc[k].score += pts; total += pts; }
   });
   var kcMap = QUIZ.kcMap || {};
-  var total=0, max=0;
-  Object.keys(kc).forEach(function(k){ total+=kc[k].score; max+=kc[k].max; });
 
   // 章节完成度：这章做了多少 / 一共多少（主观题提交即算完成）
   var chs = {}, chOrder = [];
@@ -1763,7 +2071,7 @@ function renderReport(){
   if(guessN) html += '<div class="rep-sub">蒙对标记：'+guessN+' 题（答对了但心里没底，建议重点复习）</div>';
 
   if(chOrder.length){
-    html += '<div class="rep-sub">章节完成度</div><table class="kc"><tr><th>章节</th><th>已答 / 总题</th><th>完成度</th></tr>';
+    html += '<div class="rep-sub">章节完成度</div><div class="kc-wrap"><table class="kc" data-report="chapters"><tr><th>章节</th><th>已答 / 总题</th><th>完成度</th></tr>';
     chOrder.forEach(function(id){
       var c = chs[id];
       var pct = c.total ? Math.round(c.done/c.total*100) : 0;
@@ -1772,14 +2080,14 @@ function renderReport(){
         + '<td>'+c.done+' / '+c.total+'</td>'
         + '<td><div class="bar"><i class="'+(weak?'weak':'')+'" style="width:'+pct+'%"></i></div>'+pct+'%</td></tr>';
     });
-    html += '</table>';
+    html += '</table></div>';
   }
 
   html += '<div class="rep-sub">知识点掌握度</div>';
   if(Object.keys(kc).length===0){
     html += '<div class="report-empty">还没有提交任何客观题，先做题吧。</div>';
   } else {
-    html += '<table class="kc"><tr><th>知识点</th><th>章节</th><th>得分</th><th>掌握度</th></tr>';
+    html += '<div class="kc-wrap"><table class="kc"><tr><th>知识点</th><th>章节</th><th class="kc-score">得分</th><th>掌握度</th></tr>';
     var rows = Object.keys(kc).sort(function(a,b){return (kc[a].score/kc[a].max)-(kc[b].score/kc[b].max);});
     rows.forEach(function(k){
       var v = kc[k];
@@ -1788,10 +2096,10 @@ function renderReport(){
       var weak = pct < 60;
       html += '<tr><td>'+(weak?'<span class="weak">'+label+'</span>':label)+'</td>'
         +'<td>'+(kcChap[k]||'')+'</td>'
-        +'<td>'+v.score+' / '+v.max+'</td>'
+        +'<td class="kc-score">'+v.score+' / '+v.max+'</td>'
         +'<td><div class="bar"><i class="'+(weak?'weak':'')+'" style="width:'+pct+'%"></i></div>'+pct+'%</td></tr>';
     });
-    html += '</table>';
+    html += '</table></div>';
   }
   document.getElementById('reportBody').innerHTML = html;
 }
@@ -2037,17 +2345,23 @@ function docxFromParas(paras){
   var enc = new TextEncoder();
   var x = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
   var body = paras.map(function(p){
-    return '<w:p><w:pPr><w:spacing w:after="80" w:line="300" w:lineRule="auto"/>'
-      + (p.ind ? '<w:ind w:left="' + p.ind + '"/>' : '') + '</w:pPr>'
+    var size = p.size || 24;
+    return '<w:p><w:pPr>'
+      + (p.keepNext ? '<w:keepNext/>' : '')
+      + (p.keepLines ? '<w:keepLines/>' : '')
+      + (p.pageBreakBefore ? '<w:pageBreakBefore/>' : '')
+      + '<w:spacing w:after="' + (p.after == null ? 80 : p.after) + '" w:line="' + (p.line || 468) + '" w:lineRule="auto"/>'
+      + (p.ind ? '<w:ind w:left="' + p.ind + '"/>' : '')
+      + (p.align ? '<w:jc w:val="' + p.align + '"/>' : '') + '</w:pPr>'
       + '<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体" w:hAnsi="Times New Roman"/>'
-      + '<w:sz w:val="24"/><w:szCs w:val="24"/>' + (p.b ? '<w:b/>' : '') + '</w:rPr>'
+      + (p.b ? '<w:b/>' : '') + '<w:sz w:val="' + size + '"/><w:szCs w:val="' + size + '"/></w:rPr>'
       + '<w:t xml:space="preserve">' + x(p.t) + '</w:t></w:r></w:p>';
   }).join('');
   var doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<w:document xmlns:w="' + W_NS + '"><w:body>'
     + body
     + '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>'
-    + '<w:pgMar w:top="1134" w:right="1021" w:bottom="1134" w:left="1021"/></w:sectPr>'
+    + '<w:pgMar w:top="1020" w:right="907" w:bottom="1020" w:left="907"/></w:sectPr>'
     + '</w:body></w:document>';
   var ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<Types xmlns="' + CT_NS + '">'
@@ -2080,47 +2394,89 @@ function downloadBlob(blob, name){
   document.body.appendChild(a); a.click();
   setTimeout(function(){ rm(a.href); a.remove(); }, 3000);
 }
+// Word 题型标签：只给与单选题外观相近、或没有选项的题型加标记；打印稿保持原样。
+function paperWordTypeLabel(q){
+  if(q.type === 'multi') return '【多选题】';
+  if(q.type === 'tf') return '【判断题】';
+  if(SUBJ[q.type]) return '【主观题】';
+  return '';
+}
 // Word 双卷共用：题目列表 → docx 段落数组（含答案卷多出答案与解析）
 function paperWordParas(list, title, sub, withAnswers){
-  var paras = [{t: title, b:true}, {t: sub}];
+  var paras = [
+    {t: title, b:true, size:32, align:'center', line:360, after:80, keepNext:true, keepLines:true},
+    {t: sub, size:21, align:'center', line:300, after:400, keepLines:true}
+  ];
   list.forEach(function(q, i){
-    paras.push({t: (i+1) + '. ' + paperStem(q)});
-    (q.options||[]).forEach(function(o, k){ paras.push({t: String.fromCharCode(65+k) + '. ' + o, ind:227}); });
+    var label = paperWordTypeLabel(q);
+    var stem = (i+1) + '.' + (label ? label + ' ' : ' ') + paperStem(q);
+    var block = [{t: stem}];
+    (q.options||[]).forEach(function(o, k){ block.push({t: String.fromCharCode(65+k) + '. ' + o, ind:340}); });
     if(withAnswers){
-      paras.push({t: '答案：' + paperAnswerText(q), ind:227});
-      if(q.explanation) paras.push({t: '解析：' + q.explanation, ind:227});
+      block.push({t: '答案：' + paperAnswerText(q)});
+      if(q.explanation) block.push({t: '解析：' + q.explanation});
     }
+    // Word 没有 HTML 的 break-inside:avoid：用 keepLines + keepNext 把整道题锁在同一页。
+    block.forEach(function(p, idx){
+      p.keepLines = true;
+      if(idx < block.length - 1) p.keepNext = true;
+    });
+    block[block.length - 1].after = 280;   // 约 5mm，和打印稿的题间留白一致
+    paras.push.apply(paras, block);
   });
   return paras;
 }
 function exportPaperWord(withAnswers){
   toggleMenu(false);
   var list = paperList();
-  if(!list.length){ paperEmptyHint(); return; }
+  if(!list.length){ showToast('当前筛选下没有可导出的题目'); return; }
   var course = QUIZ.course || '复习题';
   downloadBlob(docxFromParas(paperWordParas(list,
       course + (withAnswers ? ' · 复习题（含答案）' : ' · 复习题（空白）'),
       '共 ' + list.length + ' 题', withAnswers)),
     safeFileName(course) + (withAnswers ? '-复习题(含答案).docx' : '-复习题(空白).docx'));
-  var c = qCard(curQ()) || document.querySelector('.q-card.active');
-  flashHint(c, '已导出 Word：' + (withAnswers ? '含答案卷' : '空白练习卷'));
+  showToast('已导出 Word：' + (withAnswers ? '含答案卷' : '空白练习卷'));
 }
 // 错题本 Word 双卷：只含当前错题本（受「隐藏AI题」影响），空白练习卷 / 含答案卷各一份
 function exportWrongWord(withAnswers){
   toggleMenu(false);
   var list = wrongList();
-  var c = qCard(curQ()) || document.querySelector('.q-card.active');
-  if(!list.length){ flashHint(c, '当前没有错题，先做错几道再来导出'); return; }
+  if(!list.length){ showToast('当前没有错题，先做错几道再来导出'); return; }
   var course = QUIZ.course || '复习题';
   downloadBlob(docxFromParas(paperWordParas(list,
       course + (withAnswers ? ' · 错题本（含答案）' : ' · 错题本（空白练习卷）'),
       '共 ' + list.length + ' 道错题', withAnswers)),
     safeFileName(course) + (withAnswers ? '-错题本(含答案).docx' : '-错题本(空白).docx'));
-  flashHint(c, '已导出 Word：错题本' + (withAnswers ? '含答案卷' : '空白练习卷'));
+  showToast('已导出 Word：错题本' + (withAnswers ? '含答案卷' : '空白练习卷'));
 }
 
 // ── 模拟考试：限时、不即时判分，交卷后统一出分 ──
-var exam = {on:false, total:0, left:0, timer:null, list:[], set:{}, marks:{}, barsHidden:false};
+var exam = {on:false, total:0, left:0, timer:null, list:[], set:{}, marks:{}, barsHidden:false,
+            finished:false, result:null};
+function syncExamResultUI(){
+  var resultBtn=document.getElementById('examResultBtn');
+  var reviewBtn=document.getElementById('examReviewBtn');
+  var cnt=document.getElementById('examReviewCnt');
+  if(resultBtn) resultBtn.hidden=!exam.finished;
+  if(reviewBtn) reviewBtn.hidden=!exam.finished;
+  if(cnt) cnt.textContent=exam.total||0;
+}
+function activateModeButton(mode){
+  document.querySelectorAll('.mode-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.mode===mode);
+  });
+}
+function enterExamReview(){
+  if(!exam.finished) return false;
+  state.mode='exam'; state.idx=0;
+  activateModeButton('exam');
+  rebuildList(); renderCurrent(); renderPanel(); updateStats(); updateFilterSummary();
+  return true;
+}
+function openExamResult(){
+  if(!exam.finished || !exam.result) return;
+  showExamResult();
+}
 // 考试结束把先前自动收起的顶部栏还原（用户考试前就是收起的则不动）
 function examRestoreBars(){ if(exam && !exam.barsHidden) toggleTopBars(true); }
 function mmss(s){ var m = Math.floor(s/60), r = s%60; return (m<10?'0':'')+m+':'+(r<10?'0':'')+r; }
@@ -2163,6 +2519,7 @@ function onExamMin(inp, commit){
 }
 // 是否已有作答痕迹：提交过、选过选项、填过空，任意一种都算
 function hasDraftAnswers(){
+  if(exam.finished && exam.result) return true;
   for(var k in submitted){ if(submitted[k]) return true; }
   var cards = document.querySelectorAll('.q-card');
   for(var i=0;i<cards.length;i++){
@@ -2176,7 +2533,14 @@ function hasDraftAnswers(){
 function clearAllAnswers(startExam){
   submitted = {}; results = {}; wrongSet = {}; guessSet = {};
   ALL.forEach(function(q){ resetCardState(qCard(q)); });
-  if(state.mode==='wrong' || state.mode==='unanswered'){ state.idx = 0; rebuildList(); renderCurrent(); }
+  if(startExam){
+    // 旧成绩快照一并作废：即使用户在下一步取消开考，也不该留下一个与空白卷面矛盾的入口。
+    exam.finished = false; exam.result = null; exam.marks = {};
+    syncExamResultUI();
+    state.mode = 'all'; state.idx = 0;
+    activateModeButton('all');
+  }
+  if(startExam || state.mode==='wrong' || state.mode==='unanswered'){ state.idx = 0; rebuildList(); renderCurrent(); }
   updateStats();
   renderPanel();
   if(startExam) openExamSetup(); else closeReport();
@@ -2233,11 +2597,15 @@ function beginExam(){
   exam.total = pool.length;
   exam.left = m * 60;
   exam.usedTotal = m * 60;
+  exam.finished = false;
+  exam.result = null;
+  exam.marks = {};
+  syncExamResultUI();
   exam.on = true;
   closeReport();
   state.mode = 'exam';
   state.idx = 0;
-  document.querySelectorAll('.mode-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.mode==='all'); });
+  activateModeButton('exam');
   exam.barsHidden = document.body.classList.contains('topbars-hidden');   // 记住用户原来的开合状态
   document.body.classList.add('exam-on');
   toggleTopBars(false);   // 开考后整块「统计 + 筛选」收起，只留计时条与卷面
@@ -2279,24 +2647,40 @@ function submitExam(){
       c.querySelectorAll('.fill-input').forEach(function(i){ i.classList.remove('correct','wrong'); });
       c.classList.remove('answered');
     }
-    submitted[q.id] = true;
-    if(ok === null){ results[q.id] = false; wrongSet[q.id] = true; blank++; exam.marks[q.id] = 'blank'; paintReveal(c, q, false, true); }
-    else if(ok){ delete wrongSet[q.id]; results[q.id] = true; right++; exam.marks[q.id] = 'ok'; paintReveal(c, q, true, false); }
-    else { results[q.id] = false; wrongSet[q.id] = true; wrong++; exam.marks[q.id] = 'wrong'; paintReveal(c, q, false, false); }
+    // 未作答只记入本次考试结果和错题本，不能算作「已提交」，
+    // 否则掌握度报告会把空白题也当成完成题。
+    if(ok === null){
+      delete submitted[q.id];
+      delete results[q.id];
+      wrongSet[q.id] = true;
+      blank++;
+      exam.marks[q.id] = 'blank';
+      paintReveal(c, q, false, true);
+    } else {
+      submitted[q.id] = true;
+      results[q.id] = ok;
+      if(ok){ delete wrongSet[q.id]; right++; exam.marks[q.id] = 'ok'; paintReveal(c, q, true, false); }
+      else { wrongSet[q.id] = true; wrong++; exam.marks[q.id] = 'wrong'; paintReveal(c, q, false, false); }
+    }
   });
   var used = exam.usedTotal - exam.left;
   exam.on = false;
+  exam.marks = Object.assign({}, exam.marks);
+  exam.result = {right:right, wrong:wrong, blank:blank, used:used, total:exam.total,
+                 marks:Object.assign({}, exam.marks)};
+  exam.finished = true;
   document.body.classList.remove('exam-on');
   examRestoreBars();
   var strip = document.getElementById('examStrip'); if(strip) strip.classList.remove('warn');
-  state.mode = 'all'; state.idx = 0;
-  document.querySelectorAll('.mode-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.mode==='all'); });
+  state.mode = 'exam'; state.idx = 0;
+  activateModeButton('exam');
+  syncExamResultUI();
   rebuildList();
   renderCurrent();
   renderPanel();
   updateStats();
   updateFilterSummary();
-  showExamResult(right, wrong, blank, used);
+  showExamResult();
 }
 function quitExam(){
   if(!exam.on) return;
@@ -2306,7 +2690,8 @@ function quitExam(){
   examRestoreBars();
   var strip = document.getElementById('examStrip'); if(strip) strip.classList.remove('warn');
   state.mode = 'all'; state.idx = 0;
-  document.querySelectorAll('.mode-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.mode==='all'); });
+  activateModeButton('all');
+  syncExamResultUI();
   rebuildList();
   renderCurrent();
   renderPanel();
@@ -2315,16 +2700,18 @@ function quitExam(){
   var c = qCard(curQ()) || document.querySelector('.q-card.active');
   flashHint(c, '已退出考试，本次作答未判分');
 }
-function showExamResult(right, wrong, blank, used){
+function showExamResult(){
+  if(!exam.result) return;
+  var result=exam.result, right=result.right, wrong=result.wrong, blank=result.blank, used=result.used;
   document.getElementById('reportTitle').textContent = '📝 模拟考试结果';
-  var n = exam.total;
+  var n = result.total || exam.total;
   var rate = n ? Math.round(right/n*100) : 0;
   var h = '<div class="score-box">得分 <span class="ok">' + right + '</span> / ' + n + ' 题'
     + ' <span style="font-size:14px;font-weight:400;color:var(--muted)">正确率 ' + rate + '% · 用时 ' + mmss(Math.max(0, used)) + '</span></div>'
     + '<div class="report-empty">答对 ' + right + ' · 答错 ' + wrong + ' · 未作答 ' + blank + '；错题与未作答的题已进错题本。</div>'
     + '<div class="rep-sub">逐题结果（点号回看 · 绿=答对 / 红=答错 / 灰=未作答）</div><div class="rep-grid">';
   exam.list.forEach(function(q, i){
-    var mark = (exam.marks || {})[q.id] || (results[q.id] ? 'ok' : 'blank');
+    var mark = (result.marks || {})[q.id] || 'blank';
     var cls = (mark === 'ok') ? 'is-ok' : (mark === 'wrong') ? 'is-wrong' : 'is-blank';
     h += '<button type="button" class="rep-cell ' + cls + '" '
       +  'onclick="jumpFromExam(\'' + q.id + '\')">' + (i+1) + '</button>';
@@ -2335,6 +2722,7 @@ function showExamResult(right, wrong, blank, used){
 }
 function jumpFromExam(qid){
   closeReport();
+  if(exam.finished && state.mode!=='exam') enterExamReview();
   qnavJump(qid);
 }
 
@@ -2476,6 +2864,7 @@ renderCurrent();
 updateStats();
 renderPanel();
 qnavInit();
+syncExamResultUI();
 updateFilterSummary();
 updateNavOverflow();
 window.addEventListener('resize', updateNavOverflow);
