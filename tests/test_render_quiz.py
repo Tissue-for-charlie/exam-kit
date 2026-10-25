@@ -102,7 +102,155 @@ class QuizShellTests(unittest.TestCase):
         self.assertIn('id="examResultBtn"', self.html)
         self.assertIn('id="examReviewBtn"', self.html)
         self.assertIn('id="examResultBtn" type="button" onclick="openExamResult()" hidden', self.html)
-        self.assertIn('id="examReviewBtn" data-mode="exam" onclick="setMode(this)" hidden', self.html)
+        self.assertIn('id="examReviewBtn" data-mode="exam"', self.html)
+        self.assertIn('onclick="setMode(this)" hidden', self.html)
+
+    def test_compact_study_shell_and_filter_controls(self) -> None:
+        self.assertIn('class="study-bar"', self.html)
+        self.assertIn('id="filterBox"', self.html)
+        self.assertIn('id="typeSelect" onchange="setTypeSelect(this)"', self.html)
+        self.assertIn('id="chapterSelect" onchange="setChapterSelect(this)"', self.html)
+        self.assertNotIn('class="nav chapter-nav"', self.html)
+        self.assertIn('id="mapToggle"', self.html)
+        self.assertIn('id="nextBtn" onclick="nextOrReport()"', self.html)
+
+    def test_mobile_more_menu_owns_page_actions(self) -> None:
+        practice_at = self.html.index('id="practiceMenu"')
+        practice_end = self.html.index('</div></div>', practice_at)
+        export_at = self.html.index('id="exportMenu"')
+        export_end = self.html.index('</div></div>', export_at)
+        for marker in ('id="mobileExamResultBtn"', 'id="mobileMoreReportBtn"'):
+            position = self.html.index(marker)
+            self.assertGreater(position, practice_at)
+            self.assertLess(position, practice_end)
+            self.assertFalse(export_at < position < export_end)
+        self.assertLess(
+            self.html.index('id="examReviewBtn"'),
+            self.html.index('id="mobileExamResultBtn"'),
+        )
+        self.assertLess(
+            self.html.index('id="mobileExamResultBtn"'),
+            self.html.index('id="mobileMoreReportBtn"'),
+        )
+        self.assertNotIn('id="mobileQuitExamBtn"', self.html)
+
+    def test_export_menu_does_not_open_practice_menu(self) -> None:
+        self.assertIn("body.menu-open #exportMenu { display: block; }", self.css)
+        self.assertNotIn("body.menu-open .menu { display: block; }", self.css)
+        self.assertIn('id="filterSummary"', self.html)
+        self.assertIn("body.topbars-hidden .filter-badge", self.css)
+        self.assertIn("flex: 0 1 auto; width: fit-content;", self.css)
+
+    def test_filter_active_state_does_not_bleed_to_practice_button(self) -> None:
+        self.assertNotIn("body.filters-open .tool-btn", self.css)
+        self.assertIn("body.filters-open #filterToggle", self.css)
+        self.assertIn("body.practice-open #morePracticeBtn", self.css)
+        self.assertIn(".filter-panel {\n  display: none;", self.css)
+        self.assertIn("border-radius: var(--r-md); overflow: hidden;", self.css)
+
+    def test_mobile_mode_controls_use_compact_chips(self) -> None:
+        self.assertEqual(self.html.count('class="mode-chip"'), 5)
+        self.assertIn('class="mode-btn desktop-only" data-mode="guess"', self.html)
+        self.assertIn('class="mode-btn menu-mobile-only" data-mode="guess"', self.html)
+        self.assertIn("document.querySelectorAll('[data-guess-count]')", self.js)
+        self.assertIn("(state.mode==='guess' && isMobileLayout())", self.js)
+        self.assertIn('id="morePracticeLabelWide">更多</span>', self.html)
+        self.assertIn('id="morePracticeLabelCompact">更多</span>', self.html)
+        self.assertNotIn("更多练习", self.html)
+        self.assertNotIn("更多练习", self.js)
+        self.assertIn(".quick-modes .mode-btn.active .mode-chip", self.css)
+        self.assertIn("#filterToggle { width: 44px;", self.css)
+        self.assertIn("width: 56px; max-width: 56px;", self.css)
+        self.assertIn("width: min(196px, calc(100vw - 16px))", self.css)
+
+    def test_mobile_short_title_and_secondary_touch_targets(self) -> None:
+        self.assertIn('class="course-title-mobile"', self.html)
+        self.assertIn(".menu button { min-height: 44px; }", self.css)
+        self.assertIn(".report-body .rep-cell { min-width: 44px; }", self.css)
+        self.assertIn("body.exam-on .exam-strip .btn-primary,", self.css)
+        self.assertIn("body.exam-on .exam-strip .btn-outline {", self.css)
+        self.assertIn('onclick="quitExam()">退出</button>', self.html)
+        self.assertIn("body.exam-on .header-inner .menu-wrap { display: none !important; }", self.css)
+        self.assertIn("height: 44px; min-height: 44px;", self.css)
+        self.assertIn("left: 10px; right: 10px;", self.css)
+        self.assertIn("body.exam-on .exam-strip .btn-primary::before,", self.css)
+        self.assertIn("inset: 5px; z-index: -1;", self.css)
+        self.assertIn("border: 1px solid rgba(255,255,255,.26); border-radius: 8px;", self.css)
+        self.assertIn("background: rgba(255,255,255,.1);", self.css)
+        self.assertIn(".empty .btn { min-height: 44px; }", self.css)
+
+    def test_exam_defaults_to_all_questions_and_40_minutes(self) -> None:
+        self.assertIn("[1, 2, 3, 4].forEach(function(part){", self.js)
+        self.assertIn("var percent = part * 25;", self.js)
+        self.assertIn("Math.ceil(pool.length * part / 4)", self.js)
+        self.assertIn("choice.percent+'%", self.js)
+        self.assertIn("data-part=\"'+choice.part+'\"", self.js)
+        self.assertIn("nav exam-quantity-nav", self.js)
+        self.assertIn("var times = [10, 20, 30, 40, 60, 80];", self.js)
+        self.assertIn("m===40?'active'", self.js)
+        self.assertIn('value="40"', self.js)
+        self.assertIn("if(!(m > 0)) m = 40;", self.js)
+        self.assertIn("if(!(v > 0)) v = 40;", self.js)
+
+    def test_exam_score_uses_question_points(self) -> None:
+        self.assertIn("score = 0, maxScore = 0", self.js)
+        self.assertIn("maxScore += pts;", self.js)
+        self.assertIn("score += pts;", self.js)
+        self.assertIn("result.score != null", self.js)
+        self.assertIn("result.maxScore != null", self.js)
+
+    def test_popover_menus_handle_keyboard_navigation(self) -> None:
+        self.assertIn("function popoverMenuContext()", self.js)
+        self.assertIn("e.stopImmediatePropagation();", self.js)
+        self.assertIn("context.trigger.focus({preventScroll:true});", self.js)
+        self.assertIn("popoverMenuItems(context.menu)", self.js)
+        self.assertIn("body.empty-active .nav-fixed { display: none !important; }", self.css)
+
+    def test_mobile_swipe_navigation_excludes_fast_and_interactive_targets(self) -> None:
+        self.assertIn("function swipeQuestionReady(){", self.js)
+        self.assertIn("state.mode !== 'fast'", self.js)
+        self.assertIn("function swipeTargetBlocked(target){", self.js)
+        self.assertIn("touchstart", self.js)
+        self.assertIn("touchmove", self.js)
+        self.assertIn("touchend", self.js)
+        self.assertNotIn("input, textarea, select, button", self.js)
+        self.assertIn("'button, a, .quiz-top", self.js)
+
+    def test_fill_questions_use_numbered_fields(self) -> None:
+        self.assertIn('class="blank-token"', self.html)
+        self.assertIn('class="fill-fields"', self.html)
+        self.assertIn('class="fill-field"', self.html)
+        self.assertIn('class="blank-feedback" aria-live="polite"', self.html)
+        self.assertNotIn('class="fill-extra"', self.html)
+
+    def test_answer_feedback_precedes_redo_action(self) -> None:
+        self.assertIn('class="answer-static"', self.html)
+        self.assertIn('class="post-answer-actions"', self.html)
+        self.assertLess(self.html.index('class="answer-static"'), self.html.index('class="post-answer-actions"'))
+        self.assertIn("res.scrollIntoView({block:'nearest'", self.js)
+
+    def test_question_map_is_grouped_and_autoscrolls(self) -> None:
+        self.assertIn("class=\"qnav-group\"", self.js)
+        self.assertIn("function scrollCurrentQnavIntoView()", self.js)
+        self.assertIn("scrollCurrentQnavIntoView();", self.js)
+
+    def test_objective_and_subjective_filters_still_apply_chapter(self) -> None:
+        self.assertIn("if(state.type==='obj'){ if(SUBJ[q.type]) return false; }", self.js)
+        self.assertIn("else if(state.type==='subj'){ if(!SUBJ[q.type]) return false; }", self.js)
+        self.assertIn("if(state.chapter!=='all' && q.chapterId!==state.chapter) return false;", self.js)
+        self.assertNotIn("if(state.type==='obj') return !SUBJ[q.type];", self.js)
+        self.assertNotIn("if(state.type==='subj') return !!SUBJ[q.type];", self.js)
+
+    def test_report_uses_status_rows_instead_of_tables(self) -> None:
+        self.assertIn('class="report-summary"', self.js)
+        self.assertIn('class="report-row"', self.js)
+        self.assertIn('report-badge idle', self.js)
+        self.assertNotIn('table.kc', self.js)
+
+    def test_no_automatic_progress_persistence(self) -> None:
+        self.assertIn("localStorage.setItem(QNAV_KEY", self.js)
+        self.assertNotIn("examkit.quiz.state", self.js)
+        self.assertNotIn("saveProgress", self.js)
 
     def test_report_score_column_has_nowrap_contract(self) -> None:
         self.assertIn(".kc-score { min-width: 68px; white-space: nowrap;", self.css)
@@ -129,8 +277,9 @@ class QuizShellTests(unittest.TestCase):
         self.assertIn("reportObjectivePool().forEach(", self.js)
         self.assertIn("var pts = q.points || 1;", self.js)
         self.assertIn("max += pts;", self.js)
-        # 题面分数必须用动态累加的 max，而不是全卷总分
-        self.assertIn(" / '+max+' 分</div>'", self.js)
+        # 报告分值必须用动态累加的 max，而不是全卷总分
+        self.assertIn('<div class="report-summary">', self.js)
+        self.assertIn("/ '+max+'</small>", self.js)
 
 
 if __name__ == "__main__":
