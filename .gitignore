@@ -15,6 +15,9 @@ showcase/verification.json
 # superpowers 工具本地运行状态
 .superpowers/
 
+# 本地设计规格（保留在工作区，不提交）
+docs/superpowers/specs/
+
 # 系统 / 编辑器
 .DS_Store
 Thumbs.db

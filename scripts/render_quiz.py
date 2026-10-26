@@ -20,6 +20,11 @@ import json
 import os
 import re
 
+try:
+    from wrong_export import WRONG_EXPORT_CLIENT_JS
+except ModuleNotFoundError:
+    from scripts.wrong_export import WRONG_EXPORT_CLIENT_JS
+
 TYPE_NAMES = {
     "choice": "单选题",
     "multi": "多选题",
@@ -251,8 +256,8 @@ body.fast .main { padding-bottom: 46px; }
 .option.correct .opt-key { background: var(--correct); color: #fff; }
 .option.wrong { border-color: var(--wrong); background: #fbeaea; }
 .option.wrong .opt-key { background: var(--wrong); color: #fff; }
-.option.missed { border-color: var(--partial); background: #fdf3e3; }
-.option.missed .opt-key { background: var(--partial); color: #fff; }
+.option.missed { border-color: #cfd5de; border-style: dashed; background: #fafbfc; color: var(--ink-2); }
+.option.missed .opt-key { background: #eef0f4; color: var(--ink-2); }
 .option.disabled { pointer-events: none; }
 
 /* 判断题按钮（复用 option） */
@@ -278,6 +283,77 @@ body.fast .main { padding-bottom: 46px; }
   font-family: inherit; background: #fff; transition: border-color .14s var(--ease), box-shadow .14s var(--ease);
 }
 .subj-input:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(21,101,192,.14); }
+.subj-hint {
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: #f8fafc;
+}
+.subj-hint summary {
+  padding: 7px 11px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.subj-hint > div {
+  padding: 0 11px 9px;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.q-card.answered .subj-hint { display: none; }
+.subj-review {
+  display: none;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-left: 3px solid #cfd5de;
+  background: #f7f8fa;
+}
+.q-card.answered .subj-review { display: block; animation: riseIn .22s var(--ease); }
+.subj-review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--ink);
+  font-size: 13px;
+}
+.subj-coverage { color: var(--muted); font-size: 11.5px; font-weight: 500; }
+.subj-keypoints {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.subj-keypoint {
+  display: grid;
+  grid-template-columns: 1.4em minmax(0, 1fr);
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.subj-keypoint::before {
+  content: "○";
+  color: var(--muted);
+  font-weight: 700;
+}
+.subj-keypoint.hit::before {
+  content: "✓";
+  color: var(--correct);
+}
+.subj-keypoint.hit span { color: var(--ink-2); }
+.subj-keypoint.missed span { color: var(--muted); }
+.subj-feedback {
+  margin-top: 9px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.subj-feedback b { color: var(--ink); }
 
 /* 操作区 */
 .q-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
@@ -305,16 +381,26 @@ body:not(.fast) .quiz-list .q-card .q-actions .btn-primary { display: none; }
 
 /* 判分结果条：答完第一眼要看的就是它，所以「判定」居左、得分居右 */
 .q-result { display: none; margin-top: 14px; padding: 10px 14px; border-radius: var(--r-sm); font-size: 14px; font-weight: 600; }
-.q-result.ok, .q-result.bad { display: flex; align-items: center; justify-content: space-between; gap: 10px; animation: riseIn .22s var(--ease); }
+.q-result.ok, .q-result.bad { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; animation: riseIn .22s var(--ease); }
 .q-result.ok { background: #edf6ee; color: var(--correct); }
 .q-result.bad { background: #fbeaea; color: var(--wrong); }
 .q-result.info { display: flex; align-items: center; background: #eef4fd; color: var(--accent2); animation: riseIn .22s var(--ease); }
+.q-result .result-main, .q-result .result-your, .q-result .result-counts { white-space: nowrap; }
+.q-result .result-your { color: var(--ink); font-weight: 500; }
+.q-result .result-your b { color: var(--ink); font-weight: 700; }
+.q-result .result-counts { margin-left: auto; color: var(--wrong); font-size: 12px; font-weight: 650; }
 .q-result .pts { font-weight: 400; margin-left: 6px; }
+.q-card.answered .auto-hint.multi-count { display: none; }
+
+@media (max-width: 640px) {
+  .q-result.ok, .q-result.bad { align-items: flex-start; }
+  .q-result .result-counts { width: 100%; margin-left: 0; text-align: right; }
+}
 
 /* 答案 + 解析（打印时强制显示） */
 .answer-static {
   display: none; margin-top: 14px; padding: 14px 16px; border-radius: var(--r-sm);
-  background: var(--line-2); border-left: 3px solid var(--accent2); font-size: 14px; line-height: 1.75;
+  background: var(--line-2); border-left: 0; font-size: 14px; line-height: 1.75;
   overflow-wrap: anywhere;
 }
 .answer-static.show { display: block; animation: riseIn .26s var(--ease); }
@@ -324,7 +410,13 @@ body:not(.fast) .quiz-list .q-card .q-actions .btn-primary { display: none; }
 .as-ans-label { color: var(--ink); font-weight: 700; margin-bottom: 4px; }
 .as-exp { margin-top: 6px; }
 .as-exp b, .as-pit b { color: var(--ink); }
-.as-pit { margin-top: 8px; padding: 6px 10px; background: #fdf3e3; border-radius: 6px; border-left: 3px solid var(--partial); font-size: 13px; color: #7d5c10; }
+.as-pit { margin-top: 8px; margin-left: -8px; padding: 6px 10px 6px 8px; background: #fceed9; border-radius: 6px; border-left: 0; font-size: 13px; color: #7d5c10; }
+.as-distractor { margin-top: 7px; padding-top: 6px; }
+.as-distractor-title { margin-bottom: 3px; color: var(--ink); font-size: 12.5px; font-weight: 700; }
+.as-distractor-row { color: var(--ink-2); font-size: 12.5px; line-height: 1.7; }
+.as-distractor-row + .as-distractor-row { margin-top: 3px; }
+.as-distractor-row b { color: var(--ink); }
+.as-distractor-row span { display: block; }
 
 /* 答案富文本：编号成列表、代码保留缩进；所有内容都先转义再生成结构 */
 .as-rich { min-width: 0; overflow-wrap: anywhere; }
@@ -1487,6 +1579,8 @@ select:focus-visible, .tool-btn:focus-visible, .study-summary:focus-visible,
   .q-card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
   .quiz-list .q-card { display: block; }
   .answer-static { display: block !important; }
+  .subj-hint { display: none !important; }
+  .subj-review { display: block !important; }
   .as-code { white-space: pre-wrap; overflow: visible; break-inside: avoid; }
   .option.disabled, .option { pointer-events: none; }
 }
@@ -1727,10 +1821,166 @@ def _answer_static(q):
     if q.get("explanation"):
         parts.append(f'<div class="as-exp"><b>解析：</b><div class="as-rich">'
                      f'{_rich_text(q["explanation"])}</div></div>')
-    if q.get("pitfall"):
-        parts.append(f'<div class="as-pit"><b>易错：</b><div class="as-rich">'
-                     f'{_rich_text(q["pitfall"])}</div></div>')
+    distractor = _key_distractor_info(q)
+    if q.get("pitfall") or distractor:
+        pit = '<div class="as-pit">'
+        if q.get("pitfall"):
+            pit += ('<div class="as-pit-main"><b>易错：</b><div class="as-rich">'
+                    f'{_rich_text(q["pitfall"])}</div></div>')
+        if distractor:
+            pit += ('<div class="as-distractor">'
+                    f'<div class="as-distractor-title">主干扰项 {html.escape(distractor["label"])}</div>'
+                    '<div class="as-distractor-row"><b>为什么容易误选：</b>'
+                    f'<span>{_rich_text(distractor["why"])}</span></div>'
+                    '<div class="as-distractor-row"><b>怎么区分：</b>'
+                    f'<span>{_rich_text(distractor["contrast"])}</span></div></div>')
+        pit += '</div>'
+        parts.append(pit)
     return f'<div class="answer-static">{"".join(parts)}</div>'
+
+
+SUBJECTIVE_HINTS = {
+    "short": "先给结论，再按关键维度分点说明。",
+    "calc": "写出公式或判断依据，保留关键步骤和最终结果。",
+    "essay": "先列核心观点，再分点展开论证，避免只写大段结论。",
+}
+
+
+def _clean_subjective_point(text: str) -> str:
+    text = str(text or "").strip()
+    text = text.lstrip(_CIRCLED + " \t\r\n-•")
+    text = text.strip(" \t\r\n；;。")
+    return text
+
+
+def _fallback_subjective_points(answer: str) -> list[str]:
+    text = str(answer or "").strip()
+    if not text:
+        return []
+    chunks = [_clean_subjective_point(c) for c in _CIRCLED_RE.split(text) if c.strip()]
+    chunks = [c for c in chunks if c]
+    if len(chunks) <= 1:
+        lines = [_clean_subjective_point(line) for line in text.splitlines() if line.strip()]
+        lines = [line for line in lines if line]
+        if len(lines) > 1:
+            chunks = lines
+    if len(chunks) <= 1:
+        sentences = [_clean_subjective_point(part) for part in re.split(r"[；;。]\s*", text)]
+        sentences = [part for part in sentences if part]
+        if len(sentences) > 1:
+            chunks = sentences
+    if not chunks:
+        chunks = [_clean_subjective_point(text)]
+    return chunks[:6]
+
+
+def _compact_subjective_label(text: str) -> str:
+    text = _clean_subjective_point(text)
+    for part in re.split(r"[：:；;。\n]", text):
+        label = _clean_subjective_point(part)
+        if len(label) >= 4:
+            return label if len(label) <= 64 else label[:63] + "…"
+    return text if len(text) <= 64 else text[:63] + "…"
+
+
+def _subjective_key_points(q: dict) -> list[dict]:
+    raw = q.get("key_points")
+    points: list[dict] = []
+    if isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, dict):
+                label = _clean_subjective_point(item.get("label", ""))
+                match_text = str(item.get("match_text") or label)
+                keywords = item.get("keywords") or []
+                if not isinstance(keywords, list):
+                    keywords = [keywords]
+                keywords = [str(k).strip() for k in keywords if str(k).strip()]
+            else:
+                raw_label = _clean_subjective_point(item)
+                label = _compact_subjective_label(raw_label)
+                match_text = raw_label
+                keywords = []
+            if label:
+                points.append({"label": label, "keywords": keywords, "match_text": match_text})
+    if points:
+        return points[:8]
+    points = []
+    for raw_label in _fallback_subjective_points(str(q.get("answer") or "")):
+        points.append({
+            "label": _compact_subjective_label(raw_label),
+            "keywords": [],
+            "match_text": _compact_subjective_label(raw_label),
+        })
+    return points
+
+
+def _subjective_hint(q: dict) -> str:
+    hint = str(q.get("subjective_hint") or "").strip()
+    if hint:
+        return hint
+    pitfall = str(q.get("pitfall") or "").strip()
+    if pitfall:
+        return "作答时注意：" + pitfall
+    return SUBJECTIVE_HINTS.get(q.get("type", ""), "先明确结论，再补充依据和关键步骤。")
+
+
+def _subjective_hint_html(q: dict) -> str:
+    hint = _subjective_hint(q)
+    if not hint:
+        return ""
+    return (
+        '<details class="subj-hint">'
+        f'<summary>作答提示</summary><div>{html.escape(hint)}</div>'
+        '</details>'
+    )
+
+
+def _subjective_review_html(q: dict) -> str:
+    points = _subjective_key_points(q)
+    if not points:
+        return ""
+    items = []
+    for point in points:
+        keywords = json.dumps(point["keywords"], ensure_ascii=False)
+        items.append(
+            '<li class="subj-keypoint" '
+            f'data-keywords="{html.escape(keywords, quote=True)}" '
+            f'data-match-text="{html.escape(point["match_text"], quote=True)}">'
+            f'<span>{html.escape(point["label"])}</span></li>'
+        )
+    return (
+        '<section class="subj-review" aria-label="主观题关键点反馈">'
+        '<div class="subj-review-head"><b>关键点对照</b>'
+        '<span class="subj-coverage"></span></div>'
+        f'<ul class="subj-keypoints">{"".join(items)}</ul>'
+        '<div class="subj-feedback" aria-live="polite"></div>'
+        '</section>'
+    )
+
+
+def _key_distractor_info(q: dict) -> dict | None:
+    raw = q.get("key_distractor")
+    if not isinstance(raw, dict):
+        return None
+    t = q.get("type")
+    option = raw.get("option")
+    label = ""
+    if t == "choice" and isinstance(option, int) and not isinstance(option, bool):
+        options = q.get("options") or []
+        if 0 <= option < len(options) and option != q.get("answer"):
+            label = f"{chr(65 + option)}. {options[option]}"
+    elif t == "multi" and isinstance(option, int) and not isinstance(option, bool):
+        options = q.get("options") or []
+        answers = q.get("answer") or []
+        if 0 <= option < len(options) and option not in answers:
+            label = f"{chr(65 + option)}. {options[option]}"
+    elif t == "tf" and isinstance(option, bool) and option != q.get("answer"):
+        label = "正确" if option else "错误"
+    why = str(raw.get("why") or "").strip()
+    contrast = str(raw.get("contrast") or "").strip()
+    if not label or not why or not contrast:
+        return None
+    return {"label": label, "why": why, "contrast": contrast}
 
 
 def _render_question(q, gid):
@@ -1822,6 +2072,7 @@ def _render_question(q, gid):
     # 操作按钮（单选/判断：点击选项自动判分；多选/填空/主观题：手动提交）
     if t in SUBJECTIVE:
         lines.append(f'<div class="q-stem">{qtext}</div>')
+        lines.append(_subjective_hint_html(q))
         lines.append('<textarea class="subj-input" aria-label="你的答案" placeholder="在此输入你的答案……"></textarea>')
         lines.append('<div class="q-actions">'
                      f'<button class="btn btn-primary" onclick="submitCardFrom(this)">提交答案</button>'
@@ -1847,6 +2098,8 @@ def _render_question(q, gid):
 
     # 判分结果条
     lines.append('<div class="q-result" role="status"></div>')
+    if t in SUBJECTIVE:
+        lines.append(_subjective_review_html(q))
 
     # 答案 + 解析（提交后展示 / 打印强制显示）
     lines.append(_answer_static(q))
@@ -2326,43 +2579,14 @@ function wrongList(){
 }
 function exportWrong(){
   var items = wrongList();
-  if(!items.length){ alert('当前没有可导出的错题'); return; }
-  var styles = Array.prototype.map.call(document.querySelectorAll('style'), function(s){return s.textContent;}).join('\n');
-  var extra = '\n.quiz-top,#topBars,.mode-bar,.nav-fixed,.report-overlay,.backtop{display:none !important;}\n'
-    + '.qnav,.qnav-toggle,.qnav-overlay{display:none !important;}\n'
-    + '.star-btn,.menu-wrap,.exam-strip,.nav-row{display:none !important;}\n'
-    + '.main{max-width:860px;margin:0 auto;padding:20px 16px 60px;}\n'
-    + '.quiz-list .q-card{display:block !important;}\n'
-    + '.q-card{box-shadow:none;border:1px solid #ddd;break-inside:avoid;}\n'
-    + '.q-actions,.q-result,.auto-hint,.redo-btn,.post-answer-actions,.inline-hint{display:none !important;}\n'
-    + '.answer-static{display:block !important;}\n'
-    + '.option,.fill-input{pointer-events:none !important;}\n'
-    + '.fill-input{background:#fafafa;}\n'
-    + '.header{position:static;}\n';
-  var now = new Date();
-  var when = now.getFullYear()+'-'+('0'+(now.getMonth()+1)).slice(-2)+'-'+('0'+now.getDate()).slice(-2);
-  var cards = items.map(function(q){
-    var c = qCard(q); if(!c) return '';
-    var cl = c.cloneNode(true);
-    cl.classList.remove('active','fastShow');
-    Array.prototype.slice.call(cl.querySelectorAll('.q-actions,.q-result,.inline-hint')).forEach(function(n){ if(n.parentNode) n.parentNode.removeChild(n); });
-    var as = cl.querySelector('.answer-static'); if(as) as.classList.add('show');
-    Array.prototype.slice.call(cl.querySelectorAll('.fill-input')).forEach(function(inp){ inp.disabled = true; });
-    return cl.outerHTML;
-  }).join('\n');
-  var name = (QUIZ.course||'复习题');
-  var hdr = '<div class="header"><div class="header-inner"><div class="header-titles">'
-    + '<h1>'+name+' · 错题本</h1>'
-    + '<div class="sub">共 '+items.length+' 道错题 · 导出日期 '+when+' · 本文件仅含错题，可离线打开或打印</div>'
-    + '</div></div></div>';
-  var html = '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">'
-    + '<meta name="viewport" content="width=device-width, initial-scale=1">'
-    + '<title>'+name+'-错题本</title><style>'+styles+extra+'</style></head>'
-    + '<body><div class="main">'+hdr+cards+'</div></body></html>';
-  var href = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
-  var a = document.createElement('a');
-  a.href = href; a.download = name + '-错题本.html';
-  document.body.appendChild(a); a.click(); a.remove();
+  if(!items.length){ showToast('当前没有可导出的错题'); return; }
+  try {
+    downloadWrongExport(items);
+    showToast('已导出 HTML：错题本');
+  } catch(e) {
+    console.error(e);
+    showToast('导出错题失败，请重试');
+  }
 }
 
 function renderCurrent(){
@@ -2403,7 +2627,8 @@ function updateBottomBar(){
   var map = document.getElementById('mapToggle');
   if(info) info.textContent = q ? ((state.idx+1) + ' / ' + curList.length) : '0 / 0';
   var needSubmit = !!(q && !exam.on && !submitted[q.id]
-    && (q.type==='multi' || q.type==='fill' || !!SUBJ[q.type]));
+    && (((q.type==='multi' || q.type==='fill') && hasDraftAnswer(q, qCard(q)))
+      || !!SUBJ[q.type]));
   if(submit){ submit.style.display = needSubmit ? 'block' : 'none'; submit.disabled = !needSubmit; }
   if(next){
     next.style.display = needSubmit ? 'none' : 'block';
@@ -2500,10 +2725,46 @@ function grade(q, card){
   return null;
 }
 
+function hasDraftAnswer(q, card){
+  if(!q || !card) return false;
+  if(q.type==='multi'){
+    return !!card.querySelector('.option.selected');
+  }
+  if(q.type==='fill'){
+    var inputs = Array.prototype.slice.call(card.querySelectorAll('input.fill-input'));
+    return inputs.some(function(input){ return norm(input.value) !== ''; });
+  }
+  return false;
+}
+
+function multiAnswerInfo(q, card){
+  var selected = Array.prototype.slice.call(card.querySelectorAll('.option.selected'))
+    .map(function(o){ return parseInt(o.dataset.val, 10); })
+    .sort(function(a,b){ return a-b; });
+  var answers = (q.answer || []).map(function(v){ return parseInt(v, 10); })
+    .sort(function(a,b){ return a-b; });
+  var selectedSet = {};
+  var answerSet = {};
+  selected.forEach(function(i){ selectedSet[i] = 1; });
+  answers.forEach(function(i){ answerSet[i] = 1; });
+  var missed = answers.filter(function(i){ return !selectedSet[i]; });
+  var wrong = selected.filter(function(i){ return !answerSet[i]; });
+  function letters(list){
+    return list.map(function(i){ return String.fromCharCode(65 + i); }).join('、');
+  }
+  return {
+    selected: selected,
+    missed: missed,
+    wrong: wrong,
+    selectedText: selected.length ? letters(selected) : '未选择'
+  };
+}
+
 function highlight(card, q){
   if(q.type==='choice' || q.type==='tf'){
     var ansVal = String(q.answer);
     card.querySelectorAll('.option').forEach(function(o){
+      o.classList.remove('correct','wrong','missed');
       if(o.dataset.val===ansVal) o.classList.add('correct');
       if(o.classList.contains('selected') && o.dataset.val!==ansVal) o.classList.add('wrong');
     });
@@ -2511,8 +2772,9 @@ function highlight(card, q){
     var ansSet = {};
     q.answer.forEach(function(i){ansSet[i]=1;});
     card.querySelectorAll('.option').forEach(function(o){
+      o.classList.remove('correct','wrong','missed');
       var v = parseInt(o.dataset.val,10);
-      if(ansSet[v]) o.classList.add('correct');
+      if(ansSet[v]) o.classList.add(o.classList.contains('selected') ? 'correct' : 'missed');
       if(o.classList.contains('selected') && !ansSet[v]) o.classList.add('wrong');
     });
   } else if(q.type==='fill'){
@@ -2541,8 +2803,21 @@ function paintReveal(card, q, correct, blank){
   var res = card.querySelector('.q-result');
   if(!res) return;
   var pts = parseInt(card.dataset.points)||0;
-  var html = correct ? '<span>✓ 回答正确</span><span class="pts">+' + pts + ' 分</span>'
-           : (blank ? '<span>✗ 未作答</span>' : '<span>✗ 回答错误</span>');
+  var html = '<span class="result-main">' +
+    (correct ? '✓ 回答正确' : (blank ? '✕ 未作答' : '✕ 回答错误')) + '</span>';
+  if(q.type === 'multi'){
+    var info = multiAnswerInfo(q, card);
+    if(blank){
+      html += '<span class="result-counts">漏选 ' + info.missed.length + ' 项</span>';
+    } else {
+      html += '<span class="result-your">你的作答 <b>' + info.selectedText + '</b></span>';
+      if(!correct){
+        html += '<span class="result-counts">漏选 ' + info.missed.length +
+          ' · 错选 ' + info.wrong.length + '</span>';
+      }
+    }
+  }
+  if(correct) html += '<span class="pts">+' + pts + ' 分</span>';
   if(correct && !SUBJ[q.type] && !blank){
     html += '<button type="button" class="guess-btn' + (guessSet[q.id] ? ' on' : '') + '" '
          +  'onclick="toggleGuess(this)" title="把这道题记为「蒙对的」，之后重点复习">'
@@ -2561,6 +2836,80 @@ function paintReveal(card, q, correct, blank){
     });
   }
 }
+
+var SUBJECTIVE_STOP_BIGRAMS = {
+  "一个": 1, "以及": 1, "可以": 1, "需要": 1, "进行": 1, "如果": 1,
+  "因为": 1, "所以": 1, "其中": 1, "对于": 1, "通过": 1, "就是": 1,
+  "的是": 1, "和的": 1, "与或": 1, "应当": 1, "用于": 1
+};
+
+function subjectiveTokens(text){
+  var source = String(text || '').toLowerCase();
+  var tokens = {};
+  (source.match(/[a-z_][a-z0-9_]*|\d+(?:\.\d+)?/g) || []).forEach(function(token){
+    if(token.length > 1) tokens[token] = 1;
+  });
+  var runs = norm(source).match(/[\u4e00-\u9fff]+/g) || [];
+  runs.forEach(function(run){
+    for(var i = 0; i < run.length - 1; i++){
+      var gram = run.slice(i, i + 2);
+      if(!SUBJECTIVE_STOP_BIGRAMS[gram]) tokens[gram] = 1;
+    }
+  });
+  return Object.keys(tokens);
+}
+
+function subjectivePointHit(node, studentNorm){
+  var keywords = [];
+  try { keywords = JSON.parse(node.getAttribute('data-keywords') || '[]'); } catch(e) {}
+  if(keywords && keywords.length){
+    return keywords.some(function(keyword){
+      var value = norm(keyword).replace(/\s+/g, '');
+      return value && studentNorm.indexOf(value) >= 0;
+    });
+  }
+  var matchText = node.getAttribute('data-match-text') || node.textContent || node.innerText || '';
+  var tokens = subjectiveTokens(matchText);
+  if(!tokens.length) return studentNorm.indexOf(norm(matchText).replace(/\s+/g, '')) >= 0;
+  var hits = tokens.filter(function(token){ return studentNorm.indexOf(token) >= 0; }).length;
+  var ratio = tokens.length >= 16 ? 0.2 : 0.25;
+  var floor = tokens.length >= 16 ? 3 : 1;
+  return hits >= Math.max(floor, Math.ceil(tokens.length * ratio));
+}
+
+function renderSubjectiveFeedback(card, q){
+  var nodes = Array.prototype.slice.call(card.querySelectorAll('.subj-keypoint'));
+  if(!nodes.length) return;
+  var input = card.querySelector('.subj-input');
+  var studentNorm = norm(input ? input.value : '').replace(/\s+/g, '');
+  var hit = 0;
+  nodes.forEach(function(node){
+    var ok = subjectivePointHit(node, studentNorm);
+    node.classList.toggle('hit', ok);
+    node.classList.toggle('missed', !ok);
+    if(ok) hit++;
+  });
+  var total = nodes.length;
+  var coverage = card.querySelector('.subj-coverage');
+  if(coverage) coverage.textContent = '已覆盖 ' + hit + ' / ' + total + ' 个关键点';
+  var feedback = card.querySelector('.subj-feedback');
+  var message;
+  if(!studentNorm){
+    message = '尚未填写答案，以下仅展示参考关键点。';
+  } else if(hit === total){
+    message = '关键点覆盖完整，回答方向与参考答案一致。';
+  } else if(hit >= Math.ceil(total * 0.6)){
+    message = '回答方向基本正确，建议补充未覆盖的关键点。';
+  } else if(hit > 0){
+    message = '回答涉及部分关键点，建议对照参考答案补全。';
+  } else {
+    message = '暂未匹配到关键点，请对照参考答案检查表述。';
+  }
+  if(feedback) feedback.innerHTML = '<b>参考反馈：</b>' + message;
+  var result = card.querySelector('.q-result');
+  if(result) result.innerHTML = '<span>已记录 · 关键点覆盖 ' + hit + ' / ' + total + '</span>';
+}
+
 function submitCard(card){
   if(!card || exam.on) return;   // 考试中只记录作答，统一交卷判分
   var qid = card.getAttribute('data-qid');
@@ -2571,10 +2920,12 @@ function submitCard(card){
   if(SUBJ[q.type]){
     submitted[q.id] = true;
     card.classList.add('answered');
+    var subjInput = card.querySelector('.subj-input');
+    if(subjInput) subjInput.disabled = true;
     card.querySelector('.answer-static').classList.add('show');
+    renderSubjectiveFeedback(card, q);
     var sres = card.querySelector('.q-result');
     if(sres){
-      sres.innerHTML = '<span>已记录，可对照下方参考答案</span>';
       sres.className = 'q-result info';
       sres.setAttribute('tabindex','-1');
       try { sres.focus({preventScroll:true}); } catch(err) {}
@@ -2593,7 +2944,7 @@ function submitCard(card){
     return;
   }
   var correct = grade(q, card);
-  if(correct===null){ flashHint(card, q.type==='fill' ? '先把空填上再提交' : '先作答再提交'); return; }
+  if(correct===null) return;
   submitted[q.id] = true;
   results[q.id] = correct;
   var wasWrong = !!wrongSet[q.id];
@@ -2886,7 +3237,11 @@ function resetCardState(card){
   card.querySelectorAll('.blank-feedback').forEach(function(el){
     el.textContent=''; el.classList.remove('ok','bad');
   });
-  card.querySelectorAll('.subj-input').forEach(function(ta){ ta.value=''; });
+  card.querySelectorAll('.subj-input').forEach(function(ta){ ta.value=''; ta.disabled=false; });
+  card.querySelectorAll('.subj-keypoint').forEach(function(point){
+    point.classList.remove('hit','missed');
+  });
+  card.querySelectorAll('.subj-coverage,.subj-feedback').forEach(function(node){ node.textContent=''; });
   var as = card.querySelector('.answer-static'); if(as) as.classList.remove('show');
   var res = card.querySelector('.q-result'); if(res){ res.className='q-result'; res.removeAttribute('tabindex'); res.innerHTML=''; }
   var rb = card.querySelector('.redo-btn'); if(rb) rb.style.display='none';
@@ -4094,7 +4449,7 @@ function submitExam(){
     var pts = parseInt(q.points, 10) || 1;
     maxScore += pts;
     if(c){
-      c.querySelectorAll('.option').forEach(function(o){ o.classList.remove('correct','wrong','disabled'); });
+      c.querySelectorAll('.option').forEach(function(o){ o.classList.remove('correct','wrong','missed','disabled'); });
       c.querySelectorAll('.fill-input').forEach(function(i){ i.classList.remove('correct','wrong'); });
       c.classList.remove('answered');
     }
@@ -4206,6 +4561,7 @@ document.addEventListener('click', function(e){
   }
   // 考试中：只记录选择，不判分、不揭晓，交卷时统一判
   if(exam.on){ updateStats(); return; }
+  if(type === 'multi'){ updateBottomBar(); return; }
   // 单选/判断：选中即自动判分（无需点提交）
   if(type === 'choice' || type === 'tf'){
     submitCard(card);
@@ -4234,9 +4590,9 @@ document.addEventListener('keydown', function(e){
 
 // 填空题输入：边打字边算「已作答」（考试中即时刷新进度条与题号面板，不判分、不揭晓）
 document.addEventListener('input', function(e){
-  if(!exam.on) return;
   var t = e.target;
   if(!t || !t.classList || !t.classList.contains('fill-input')) return;
+  if(!exam.on){ updateBottomBar(); return; }
   if(t.closest('.q-card')) updateStats();
 });
 
@@ -4349,6 +4705,8 @@ window.addEventListener('scroll', function(){
   });
 }, {passive:true});
 """
+
+QUIZ_JS += "\n" + WRONG_EXPORT_CLIENT_JS
 
 
 def main():

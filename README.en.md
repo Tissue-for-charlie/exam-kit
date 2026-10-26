@@ -16,7 +16,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes: latest **V1.1.0** (2026.10.1
 |---|---|---|
 | **Study outline** | Memorize chapter by chapter: magazine-style chapter cards, four-colour importance tags on every knowledge point, and `content` that automatically renders comparisons and parallel points as **comparison tables, flows and categories** (no walls of text); a collapsible self-test at the end of each chapter | [![Study outline preview](showcase/preview/outline-thumb.png)](showcase/preview/outline.png) |
 | **Quiz** | Answer question by question with instant auto-grading and per-question explanations; **speed run** lists the whole filtered set for scrolling practice; **mock exam** (custom duration, graded on submit); **wrong-answer book + export wrong answers as HTML / print two papers / export to Word**; **question navigator** renumbered by the current filter with click-to-jump; **search**, **star** and **lucky-guess** flags | [![Quiz preview](showcase/preview/quiz-thumb.png)](showcase/preview/quiz.png) |
-| **Quiz · wrong-answer export** | A standalone offline HTML generated from the quiz in one click: wrong answers only, answers expanded, printable (follows the "hide AI questions" toggle; includes no question navigator or redo button) | [![Wrong-answer export preview](showcase/preview/wrong-thumb.png)](showcase/preview/wrong.png) |
+| **Quiz · wrong-answer export** | A standalone offline review app generated from the quiz in one click: wrong answers only with answers hidden by default, retry and auto-grading, drill/review modes, chapter filters, random order, reveal-all answers, restored progress, keyboard shortcuts, mobile swipe navigation, and printable answer/blank versions (follows the "hide AI questions" toggle) | [![Wrong-answer export preview](showcase/preview/wrong-thumb.png)](showcase/preview/wrong.png) |
 | **Knowledge graph** | **Radial overview** (course → one ring of chapters); click a chapter to expand its knowledge points outwards, click a bubble for structured details; full-screen mode | [![Knowledge graph preview](showcase/preview/graph-thumb.png)](showcase/preview/graph.png) |
 
 <sub>All three are single-file, openable offline and printable; desktop and mobile are adapted separately (mobile tables and font sizes are handled). Thumbnails are small desktop shots — click them for the full size.</sub>
@@ -129,6 +129,7 @@ scripts/                    # Core: the materials pipeline — four steps make o
 ├── extract.py              #   extract text, record image paths for the multimodal agent
 ├── render_outline.py       #   render the study outline HTML
 ├── render_quiz.py          #   render the quiz HTML (interactive answering / mock exam / exports)
+├── wrong_export.py         #   standalone offline wrong-answer review app
 └── render_graph.py         #   render the knowledge graph HTML
 showcase/                   # Support: public demo and regression, proving the render chain is reproducible
 ├── fixture/course.json     #   independently worded demo data (skeleton + question-bank schema sample)

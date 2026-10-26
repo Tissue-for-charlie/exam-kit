@@ -89,6 +89,51 @@ class RichAnswerTests(unittest.TestCase):
         self.assertIn("解析", result)
         self.assertIn("易错", result)
 
+    def test_subjective_fallback_points_split_circled_answer(self) -> None:
+        points = render_quiz._fallback_subjective_points(
+            "①主键唯一标识本表记录；②外键引用另一张表的键；③维护引用完整性。"
+        )
+        self.assertEqual(len(points), 3)
+        self.assertIn("主键", points[0])
+        self.assertIn("引用完整性", points[2])
+
+    def test_subjective_review_uses_explicit_keywords(self) -> None:
+        q = {
+            "type": "short",
+            "answer": "参考回答",
+            "subjective_hint": "从三个方面回答。",
+            "key_points": [
+                {"label": "关键点一", "keywords": ["关键词一"]},
+                {"label": "关键点二", "keywords": ["keyword-2"]},
+            ],
+        }
+        points = render_quiz._subjective_key_points(q)
+        html = render_quiz._subjective_review_html(q)
+        self.assertEqual(points[0]["keywords"], ["关键词一"])
+        self.assertIn('data-keywords=', html)
+        self.assertIn("关键点二", html)
+        self.assertIn("作答提示", render_quiz._subjective_hint_html(q))
+
+    def test_key_distractor_is_embedded_in_existing_pitfall_block(self) -> None:
+        q = {
+            "type": "choice",
+            "options": ["正确项", "干扰项一", "主干扰项"],
+            "answer": 0,
+            "pitfall": "整题易错提醒",
+            "key_distractor": {
+                "option": 2,
+                "why": "容易被表面相似说法吸引。",
+                "contrast": "它没有满足题目中的关键条件。",
+            },
+        }
+        result = render_quiz._answer_static(q)
+        self.assertIn('class="as-pit"', result)
+        self.assertIn("主干扰项 C. 主干扰项", result)
+        self.assertIn("为什么容易误选", result)
+        self.assertIn("容易被表面相似说法吸引", result)
+        self.assertIn("怎么区分", result)
+        self.assertNotIn("why-toggle", result)
+
 
 class QuizShellTests(unittest.TestCase):
     @classmethod
@@ -222,6 +267,38 @@ class QuizShellTests(unittest.TestCase):
         self.assertIn('class="fill-field"', self.html)
         self.assertIn('class="blank-feedback" aria-live="polite"', self.html)
         self.assertNotIn('class="fill-extra"', self.html)
+
+    def test_multi_and_fill_bottom_action_tracks_draft_answer(self) -> None:
+        self.assertIn("function hasDraftAnswer(q, card){", self.js)
+        self.assertIn("hasDraftAnswer(q, qCard(q))", self.js)
+        self.assertIn("if(type === 'multi'){ updateBottomBar(); return; }", self.js)
+        self.assertIn("if(!exam.on){ updateBottomBar(); return; }", self.js)
+        self.assertIn("if(correct===null) return;", self.js)
+        self.assertNotIn("if(correct===null){ flashHint", self.js)
+
+    def test_multi_answer_review_distinguishes_selected_and_missed(self) -> None:
+        self.assertIn("function multiAnswerInfo(q, card){", self.js)
+        self.assertIn("o.classList.add(o.classList.contains('selected') ? 'correct' : 'missed')", self.js)
+        self.assertIn('result-your', self.js)
+        self.assertIn('result-counts', self.js)
+        self.assertIn(".option.missed { border-color: #cfd5de; border-style: dashed;", self.css)
+        self.assertIn(".q-card.answered .auto-hint.multi-count { display: none; }", self.css)
+
+    def test_subjective_hint_and_keypoint_feedback_are_rendered(self) -> None:
+        self.assertIn('class="subj-hint"', self.html)
+        self.assertIn('class="subj-review"', self.html)
+        self.assertIn('class="subj-keypoint"', self.html)
+        self.assertIn("function renderSubjectiveFeedback(card, q){", self.js)
+        self.assertIn("subjectivePointHit(node, studentNorm)", self.js)
+        self.assertIn(".q-card.answered .subj-hint { display: none; }", self.css)
+
+    def test_answer_panels_have_no_left_rule_and_align_pitfall_text(self) -> None:
+        self.assertIn("background: var(--line-2); border-left: 0;", self.css)
+        self.assertIn(
+            ".as-pit { margin-top: 8px; margin-left: -8px; padding: 6px 10px 6px 8px;",
+            self.css,
+        )
+        self.assertIn(".as-distractor-title", self.css)
 
     def test_answer_feedback_precedes_redo_action(self) -> None:
         self.assertIn('class="answer-static"', self.html)

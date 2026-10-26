@@ -196,7 +196,7 @@ def validate_quiz(quiz: Any, chapter_ids: set[str], kc_ids: set[str]) -> int:
         for qi, raw_question in enumerate(questions):
             q_where = f"{where}.questions[{qi}]"
             q = expect_dict(raw_question, q_where)
-            allowed = {"id", "type", "source", "source_ref", "kc_id", "difficulty", "points", "question", "options", "answer", "explanation", "pitfall"}
+            allowed = {"id", "type", "source", "source_ref", "kc_id", "difficulty", "points", "question", "options", "answer", "explanation", "pitfall", "subjective_hint", "key_points", "key_distractor"}
             required = {"id", "type", "source", "source_ref", "kc_id", "difficulty", "points", "question", "answer", "explanation", "pitfall"}
             check_keys(q, allowed, required, q_where)
             qid = validate_safe_identifier(q["id"], f"{q_where}.id")
@@ -222,6 +222,26 @@ def validate_quiz(quiz: Any, chapter_ids: set[str], kc_ids: set[str]) -> int:
                 fail(f"{q_where}.points must be a positive integer")
             for field in ("question", "explanation", "pitfall"):
                 validate_safe_display_text(q[field], f"{q_where}.{field}")
+            if "subjective_hint" in q:
+                if question_type not in {"short", "calc", "essay"}:
+                    fail(f"{q_where}.subjective_hint is only allowed for subjective questions")
+                validate_safe_display_text(q["subjective_hint"], f"{q_where}.subjective_hint")
+            if "key_points" in q:
+                if question_type not in {"short", "calc", "essay"}:
+                    fail(f"{q_where}.key_points is only allowed for subjective questions")
+                key_points = expect_list(q["key_points"], f"{q_where}.key_points")
+                if not key_points:
+                    fail(f"{q_where}.key_points must not be empty")
+                for pi, raw_point in enumerate(key_points):
+                    point_where = f"{q_where}.key_points[{pi}]"
+                    point = expect_dict(raw_point, point_where)
+                    check_keys(point, {"label", "keywords"}, {"label", "keywords"}, point_where)
+                    validate_safe_display_text(point["label"], f"{point_where}.label")
+                    keywords = expect_list(point["keywords"], f"{point_where}.keywords")
+                    if not keywords:
+                        fail(f"{point_where}.keywords must not be empty")
+                    for ki, keyword in enumerate(keywords):
+                        validate_safe_display_text(keyword, f"{point_where}.keywords[{ki}]")
             if q["type"] in {"choice", "multi"}:
                 options = expect_list(q.get("options"), f"{q_where}.options")
                 if len(options) < 2 or not all(isinstance(o, str) and o.strip() for o in options):
@@ -230,6 +250,27 @@ def validate_quiz(quiz: Any, chapter_ids: set[str], kc_ids: set[str]) -> int:
                     validate_safe_display_text(option, f"{q_where}.options[{oi}]")
             elif "options" in q:
                 fail(f"{q_where}.options is only allowed for choice and multi questions")
+            if "key_distractor" in q:
+                if question_type not in {"choice", "multi", "tf"}:
+                    fail(f"{q_where}.key_distractor is only allowed for choice, multi, or tf questions")
+                distractor = expect_dict(q["key_distractor"], f"{q_where}.key_distractor")
+                check_keys(distractor, {"option", "why", "contrast"},
+                           {"option", "why", "contrast"}, f"{q_where}.key_distractor")
+                option = distractor["option"]
+                if question_type in {"choice", "multi"}:
+                    options = q.get("options") or []
+                    answer = q.get("answer")
+                    if (not isinstance(option, int) or isinstance(option, bool)
+                            or not 0 <= option < len(options)):
+                        fail(f"{q_where}.key_distractor.option must be a valid option index")
+                    if (question_type == "choice" and option == answer):
+                        fail(f"{q_where}.key_distractor.option must point to a wrong option")
+                    if (question_type == "multi" and option in answer):
+                        fail(f"{q_where}.key_distractor.option must point to a wrong option")
+                elif not isinstance(option, bool) or option == q.get("answer"):
+                    fail(f"{q_where}.key_distractor.option must point to the wrong true/false choice")
+                validate_safe_display_text(distractor["why"], f"{q_where}.key_distractor.why")
+                validate_safe_display_text(distractor["contrast"], f"{q_where}.key_distractor.contrast")
             validate_answer(q, q_where)
             count += 1
     if not {"original", "generated"}.issubset(seen_sources):

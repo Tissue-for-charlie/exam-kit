@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 import zipfile
 from io import BytesIO
 from pathlib import Path
@@ -80,6 +81,633 @@ def check_word_layout(document: str, labels: list[str], with_answers: bool) -> N
         raise RuntimeError("Word answer paper is missing answers or explanations")
     if not with_answers and (has_answer_text or has_explanation):
         raise RuntimeError("Word blank paper unexpectedly contains answers or explanations")
+
+
+def check_wrong_export(browser) -> None:
+    """Exercise the generated interactive wrong-question HTML end to end."""
+    with tempfile.TemporaryDirectory(prefix="exam-kit-wrong-export-") as tmp:
+        export_path = Path(tmp) / "wrong-export.html"
+        host = browser.new_page(viewport={"width": 1280, "height": 900},
+                                accept_downloads=True)
+        host.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+        host.wait_for_timeout(180)
+        host.evaluate(
+            """() => {
+                wrongSet = {
+                    'ch1.q1': true,
+                    'ch1.q2': true,
+                    'ch1.q3': true,
+                    'ch2.q2': true
+                };
+                document.getElementById('exportWrongBtn').disabled = false;
+            }"""
+        )
+        with host.expect_download() as download:
+            host.evaluate("() => document.getElementById('exportWrongBtn').click()")
+        download.value.save_as(str(export_path))
+        host.close()
+        if export_path.stat().st_size < 20_000:
+            raise RuntimeError("interactive wrong export is unexpectedly small")
+
+        view = browser.new_page(viewport={"width": 1280, "height": 900})
+        errors: list[str] = []
+        requests: list[str] = []
+        view.on("console", lambda message: errors.append(f"{message.type}: {message.text}")
+                if message.type == "error" else None)
+        view.on("request", lambda request: requests.append(request.url))
+        view.goto(export_path.as_uri(), wait_until="load")
+        view.wait_for_timeout(180)
+        initial = view.evaluate(
+            """() => ({
+                count: WrongExport.data.questions.length,
+                cards: document.querySelectorAll('.wx-card').length,
+                answers: document.querySelectorAll('.wx-answer').length,
+                overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+                storage: WrongExport.storageAvailable()
+            })"""
+        )
+        if (initial["count"] != 4 or initial["cards"] != 1 or initial["answers"] != 0
+                or initial["overflow"] or not initial["storage"]):
+            raise RuntimeError(f"interactive wrong export initial state is wrong: {initial}")
+        sidebar_geometry = view.evaluate(
+            """() => {
+                const sidebar = document.querySelector('.wx-sidebar').getBoundingClientRect();
+                const selected = document.querySelector('.wx-chapter[aria-pressed="true"]')
+                    .getBoundingClientRect();
+                return {
+                    sidebarLeft: sidebar.left,
+                    sidebarRight: sidebar.right,
+                    selectedLeft: selected.left,
+                    selectedRight: selected.right
+                };
+            }"""
+        )
+        if (sidebar_geometry["selectedLeft"] < sidebar_geometry["sidebarLeft"]
+                or sidebar_geometry["selectedRight"] > sidebar_geometry["sidebarRight"] + 0.5):
+            raise RuntimeError(
+                f"interactive wrong export chapter bubble is clipped: {sidebar_geometry}"
+            )
+
+        keyboard = browser.new_page(viewport={"width": 1280, "height": 900})
+        keyboard.goto(export_path.as_uri(), wait_until="load")
+        keyboard.wait_for_timeout(120)
+        keyboard.keyboard.press("a")
+        keyboard.wait_for_timeout(60)
+        keyboard_choice = keyboard.evaluate(
+            """() => ({
+                qid: WrongExport.getState().currentId,
+                answer: WrongExport.getState().answers['ch1.q1'],
+                nextText: document.getElementById('wxNext').textContent.trim()
+            })"""
+        )
+        if (keyboard_choice["qid"] != "ch1.q1"
+                or not keyboard_choice["answer"]["submitted"]
+                or not keyboard_choice["answer"]["correct"]):
+            raise RuntimeError(f"interactive wrong export A shortcut failed: {keyboard_choice}")
+        keyboard.keyboard.press("ArrowRight")
+        keyboard.wait_for_timeout(50)
+        keyboard.keyboard.press("a")
+        keyboard.wait_for_timeout(50)
+        keyboard_tf = keyboard.evaluate(
+            """() => ({
+                current: WrongExport.getState().currentId,
+                answer: WrongExport.getState().answers['ch1.q2']
+            })"""
+        )
+        if keyboard_tf["current"] != "ch1.q2" or not keyboard_tf["answer"]["correct"]:
+            raise RuntimeError(f"interactive wrong export arrow/A shortcut failed: {keyboard_tf}")
+        keyboard.keyboard.press("ArrowDown")
+        keyboard.wait_for_timeout(50)
+        if keyboard.evaluate("() => WrongExport.getState().currentId") != "ch1.q3":
+            raise RuntimeError("interactive wrong export ArrowDown navigation failed")
+        keyboard.keyboard.press("ArrowRight")
+        keyboard.wait_for_timeout(50)
+        keyboard.keyboard.press("a")
+        keyboard.wait_for_timeout(50)
+        keyboard.keyboard.press("d")
+        keyboard.wait_for_timeout(50)
+        keyboard_multi = keyboard.evaluate(
+            """() => ({
+                current: WrongExport.getState().currentId,
+                selected: WrongExport.getState().answers['ch2.q2'].value,
+                nextText: document.getElementById('wxNext').textContent.trim()
+            })"""
+        )
+        if (keyboard_multi["current"] != "ch2.q2" or keyboard_multi["selected"] != [0, 2]
+                or keyboard_multi["nextText"] != "提交答案"):
+            raise RuntimeError(f"interactive wrong export multi shortcut failed: {keyboard_multi}")
+        keyboard.locator("#wxNext").click()
+        keyboard.wait_for_timeout(80)
+        keyboard_multi_review = keyboard.evaluate(
+            """() => {
+                const card = document.querySelector('[data-wx-card="ch2.q2"]');
+                const result = card.querySelector('.wx-result');
+                return {
+                    correct: card.querySelectorAll('.wx-option.is-correct').length,
+                    missed: card.querySelectorAll('.wx-option.is-missed').length,
+                    wrong: card.querySelectorAll('.wx-option.is-wrong').length,
+                    your: result.querySelector('.wx-result-your')?.textContent.trim() || '',
+                    counts: result.querySelector('.wx-result-counts')?.textContent.trim() || '',
+                    nextText: document.getElementById('wxNext').textContent.trim(),
+                    distractor: card.querySelector('.as-distractor')?.textContent.trim() || '',
+                    answerBorder: parseFloat(getComputedStyle(card.querySelector('.wx-answer')).borderLeftWidth),
+                    pitfallPadding: parseFloat(getComputedStyle(card.querySelector('.as-pit')).paddingLeft)
+                };
+            }"""
+        )
+        if (keyboard_multi_review["correct"] != 1 or keyboard_multi_review["missed"] != 2
+                or keyboard_multi_review["wrong"] != 1
+                or "A、C" not in keyboard_multi_review["your"]
+                or "漏选 2" not in keyboard_multi_review["counts"]
+                or "错选 1" not in keyboard_multi_review["counts"]
+                or keyboard_multi_review["nextText"] != "完成本轮"
+                or "主干扰项 C" not in keyboard_multi_review["distractor"]
+                or keyboard_multi_review["answerBorder"] != 0
+                or keyboard_multi_review["pitfallPadding"] != 8):
+            raise RuntimeError(
+                f"interactive wrong export multi review is wrong: {keyboard_multi_review}"
+            )
+        keyboard.close()
+
+        view.evaluate("() => { WrongExport.setMode('review'); WrongExport.toggleReveal(); }")
+        reveal = view.evaluate(
+            """() => ({
+                cards: document.querySelectorAll('#wxReview .wx-card').length,
+                answers: document.querySelectorAll('#wxReview .wx-answer').length,
+                disabled: Array.from(document.querySelectorAll('#wxReview [data-wx-option]'))
+                    .every(node => node.disabled),
+                bottomHidden: document.getElementById('wxBottom').hidden
+            })"""
+        )
+        if (reveal["cards"] != 4 or reveal["answers"] != 4 or not reveal["disabled"]
+                or not reveal["bottomHidden"]):
+            raise RuntimeError(f"interactive wrong export reveal/review state is wrong: {reveal}")
+        view.evaluate("() => WrongExport.toggleReveal()")
+
+        answer_values = view.evaluate(
+            """() => Object.fromEntries(
+                WrongExport.data.questions.map(q => [q.id, q.answer])
+            )"""
+        )
+        view.locator(
+            f'#wxReview [data-wx-card="ch1.q1"] [data-wx-option][data-wx-value="{answer_values["ch1.q1"]}"]'
+        ).click()
+        view.wait_for_timeout(60)
+        tf_value = "true" if answer_values["ch1.q2"] else "false"
+        view.locator(
+            f'#wxReview [data-wx-card="ch1.q2"] [data-wx-option][data-wx-value="{tf_value}"]'
+        ).click()
+        view.wait_for_timeout(60)
+        for value in answer_values["ch2.q2"]:
+            view.locator(
+                f'#wxReview [data-wx-card="ch2.q2"] [data-wx-option][data-wx-value="{value}"]'
+            ).click()
+        view.locator('#wxReview [data-wx-card="ch2.q2"] [data-wx-submit]').click()
+        view.wait_for_timeout(60)
+        fill_value = answer_values["ch1.q3"][0]
+        view.locator('#wxReview [data-wx-card="ch1.q3"] [data-wx-fill]').fill(fill_value)
+        view.locator('#wxReview [data-wx-card="ch1.q3"] [data-wx-submit]').click()
+        view.wait_for_timeout(100)
+        answered = view.evaluate(
+            """() => ({
+                done: document.getElementById('wxDone').textContent,
+                correct: document.getElementById('wxCorrect').textContent,
+                answers: document.querySelectorAll('#wxReview .wx-answer').length,
+                results: document.querySelectorAll('#wxReview .wx-result').length
+            })"""
+        )
+        if answered != {"done": "4", "correct": "4", "answers": 4, "results": 4}:
+            raise RuntimeError(f"interactive wrong export grading is wrong: {answered}")
+
+        view.evaluate("() => WrongExport.toggleRandom()")
+        random_order = view.evaluate("() => WrongExport.getState().randomOrder.slice()")
+        view.reload(wait_until="load")
+        view.wait_for_timeout(140)
+        restored_random = view.evaluate(
+            """() => ({
+                enabled: WrongExport.getState().random,
+                order: WrongExport.getState().randomOrder.slice()
+            })"""
+        )
+        if (not restored_random["enabled"] or restored_random["order"] != random_order
+                or len(random_order) != 4):
+            raise RuntimeError(
+                f"interactive wrong export random order did not persist: {restored_random}"
+            )
+        view.evaluate("() => WrongExport.toggleRandom()")
+
+        view.evaluate("() => WrongExport.setChapter('ch2')")
+        chapter = view.evaluate(
+            "() => ({ids: WrongExport.getFilteredIds(), cards: document.querySelectorAll('.wx-card').length})"
+        )
+        if chapter["ids"] != ["ch2.q2"] or chapter["cards"] != 1:
+            raise RuntimeError(f"interactive wrong export chapter filter is wrong: {chapter}")
+        view.evaluate("() => WrongExport.setChapter('all')")
+        blank_count = view.evaluate("() => WrongExport.preparePrint('blank')")
+        blank_print = view.evaluate(
+            """() => ({
+                questions: document.querySelectorAll('#wxPrintRoot .wx-print-q').length,
+                answers: document.querySelectorAll('#wxPrintRoot .wx-print-answer').length,
+                write: document.querySelectorAll('#wxPrintRoot .wx-print-write').length
+            })"""
+        )
+        answer_count = view.evaluate("() => WrongExport.preparePrint('answers')")
+        answer_print = view.evaluate(
+            """() => ({
+                questions: document.querySelectorAll('#wxPrintRoot .wx-print-q').length,
+                answers: document.querySelectorAll('#wxPrintRoot .wx-print-answer').length,
+                write: document.querySelectorAll('#wxPrintRoot .wx-print-write').length
+            })"""
+        )
+        if (blank_count != 4 or answer_count != 4
+                or blank_print != {"questions": 4, "answers": 0, "write": 4}
+                or answer_print != {"questions": 4, "answers": 4, "write": 0}):
+            raise RuntimeError(
+                f"interactive wrong export print variants are wrong: {blank_print} / {answer_print}"
+            )
+
+        view.reload(wait_until="load")
+        view.wait_for_timeout(160)
+        restored = view.evaluate(
+            """() => ({
+                done: document.getElementById('wxDone').textContent,
+                chapter: WrongExport.getState().chapter
+            })"""
+        )
+        if restored != {"done": "4", "chapter": "all"}:
+            raise RuntimeError(f"interactive wrong export did not restore progress: {restored}")
+
+        mobile = browser.new_page(viewport={"width": 390, "height": 844}, is_mobile=True)
+        mobile.goto(export_path.as_uri(), wait_until="load")
+        mobile.wait_for_timeout(160)
+        mobile_state = mobile.evaluate(
+            """() => ({
+                overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+                moreVisible: document.getElementById('wxMore').getBoundingClientRect().height > 0,
+                sidebarVisible: document.querySelector('.wx-sidebar').getBoundingClientRect().height > 0
+            })"""
+        )
+        if mobile_state != {"overflow": False, "moreVisible": True, "sidebarVisible": False}:
+            raise RuntimeError(f"interactive wrong export mobile layout is wrong: {mobile_state}")
+        swipe_before = mobile.evaluate("() => WrongExport.getState().currentId")
+        swipe_after = mobile.evaluate(
+            """() => {
+                const target = document.querySelector('.wx-main');
+                const touch = (x, y) => new Touch({
+                    identifier: 1,
+                    target: target,
+                    clientX: x,
+                    clientY: y,
+                    pageX: x,
+                    pageY: y,
+                    screenX: x,
+                    screenY: y,
+                    radiusX: 2,
+                    radiusY: 2,
+                    force: 1
+                });
+                const start = touch(310, 420);
+                target.dispatchEvent(new TouchEvent('touchstart', {
+                    bubbles: true, cancelable: true, touches: [start],
+                    targetTouches: [start], changedTouches: [start]
+                }));
+                const move = touch(170, 420);
+                target.dispatchEvent(new TouchEvent('touchmove', {
+                    bubbles: true, cancelable: true, touches: [move],
+                    targetTouches: [move], changedTouches: [move]
+                }));
+                target.dispatchEvent(new TouchEvent('touchend', {
+                    bubbles: true, cancelable: true, touches: [],
+                    targetTouches: [], changedTouches: [move]
+                }));
+                return WrongExport.getState().currentId;
+            }"""
+        )
+        if swipe_before == swipe_after:
+            raise RuntimeError(
+                f"interactive wrong export mobile swipe did not switch question: {swipe_before}"
+            )
+        mobile.locator("#wxMore").click()
+        mobile.wait_for_timeout(80)
+        sheet = mobile.evaluate(
+            """() => ({
+                open: !document.getElementById('wxSheet').hidden,
+                modes: document.querySelectorAll('#wxSheet [data-wx-mode]').length,
+                print: document.querySelectorAll('#wxSheet [data-wx-print]').length
+            })"""
+        )
+        if sheet != {"open": True, "modes": 2, "print": 2}:
+            raise RuntimeError(f"interactive wrong export mobile sheet is wrong: {sheet}")
+        mobile.locator("#wxSheetReview").click()
+        mobile.wait_for_timeout(80)
+        mobile_mode = mobile.evaluate(
+            """() => ({
+                mode: WrongExport.getState().mode,
+                sheetClosed: document.getElementById('wxSheet').hidden,
+                reviewVisible: !document.getElementById('wxReview').hidden,
+                overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth
+            })"""
+        )
+        if mobile_mode != {
+            "mode": "review",
+            "sheetClosed": True,
+            "reviewVisible": True,
+            "overflow": False,
+        }:
+            raise RuntimeError(f"interactive wrong export mobile mode switch is wrong: {mobile_mode}")
+        mobile.close()
+
+        memory_context = browser.new_context(viewport={"width": 390, "height": 844})
+        memory_context.add_init_script(
+            "Object.defineProperty(window, 'localStorage', "
+            "{get: function(){throw new Error('blocked')}});"
+        )
+        memory_page = memory_context.new_page()
+        memory_page.goto(export_path.as_uri(), wait_until="load")
+        memory_page.wait_for_timeout(120)
+        memory_state = memory_page.evaluate(
+            """() => ({
+                storage: WrongExport.storageAvailable(),
+                text: document.getElementById('wxSaveState').textContent.trim(),
+                memory: document.getElementById('wxSaveState').classList.contains('is-memory'),
+                cards: document.querySelectorAll('.wx-card').length
+            })"""
+        )
+        if (memory_state["storage"] or not memory_state["memory"]
+                or memory_state["cards"] != 1
+                or "不保存" not in memory_state["text"]):
+            raise RuntimeError(f"interactive wrong export storage fallback is wrong: {memory_state}")
+        memory_context.close()
+
+        external = [url for url in requests if url.startswith(("http://", "https://"))]
+        if external:
+            raise RuntimeError(f"interactive wrong export made external requests: {external}")
+        if errors:
+            raise RuntimeError(f"interactive wrong export console errors: {errors}")
+        view.close()
+
+
+def check_practice_multi_fill_buttons(browser) -> None:
+    """Multi/fill bottom actions should submit only when a draft exists."""
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    page.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+    page.wait_for_timeout(120)
+
+    def bottom_state() -> dict:
+        return page.evaluate(
+            """() => ({
+                submit: getComputedStyle(document.getElementById('submitBtn')).display !== 'none',
+                next: getComputedStyle(document.getElementById('nextBtn')).display !== 'none',
+                submitText: document.getElementById('submitBtn').textContent.trim(),
+                nextText: document.getElementById('nextBtn').textContent.trim(),
+                hint: document.querySelectorAll('.q-card.active .inline-hint.show').length,
+                answered: !!document.querySelector('.q-card.active.answered')
+            })"""
+        )
+
+    page.evaluate(
+        """() => {
+            setModeValue('all');
+            setTypeValue('all');
+            setChapterValue('all');
+            const q = ALL.find(item => item.type === 'fill');
+            state.idx = curList.findIndex(item => item.id === q.id);
+            renderCurrent();
+        }"""
+    )
+    page.wait_for_timeout(80)
+    fill_empty = bottom_state()
+    if fill_empty["submit"] or not fill_empty["next"] or fill_empty["nextText"] != "下一题":
+        raise RuntimeError(f"empty fill question does not offer next: {fill_empty}")
+    fill_input = page.locator(".q-card.active input.fill-input").first
+    fill_input.fill("草稿")
+    page.wait_for_timeout(50)
+    fill_draft = bottom_state()
+    if not fill_draft["submit"] or fill_draft["next"] or fill_draft["submitText"] != "提交答案":
+        raise RuntimeError(f"partially filled fill question does not offer submit: {fill_draft}")
+    fill_input.fill("")
+    page.wait_for_timeout(50)
+    fill_cleared = bottom_state()
+    if fill_cleared["submit"] or not fill_cleared["next"]:
+        raise RuntimeError(f"cleared fill question did not return to next: {fill_cleared}")
+    fill_input.press("Enter")
+    page.wait_for_timeout(50)
+    fill_enter = bottom_state()
+    if fill_enter["hint"] or fill_enter["answered"]:
+        raise RuntimeError(f"empty fill Enter still triggered a restriction: {fill_enter}")
+
+    page.evaluate(
+        """() => {
+            const q = ALL.find(item => item.type === 'multi');
+            state.idx = curList.findIndex(item => item.id === q.id);
+            renderCurrent();
+        }"""
+    )
+    page.wait_for_timeout(80)
+    multi_empty = bottom_state()
+    if multi_empty["submit"] or not multi_empty["next"] or multi_empty["nextText"] != "下一题":
+        raise RuntimeError(f"empty multi question does not offer next: {multi_empty}")
+    multi_option = page.locator(".q-card.active .option").first
+    multi_option.click()
+    page.wait_for_timeout(50)
+    multi_draft = bottom_state()
+    if not multi_draft["submit"] or multi_draft["next"] or multi_draft["submitText"] != "提交答案":
+        raise RuntimeError(f"selected multi question does not offer submit: {multi_draft}")
+    multi_option.click()
+    page.wait_for_timeout(50)
+    multi_cleared = bottom_state()
+    if multi_cleared["submit"] or not multi_cleared["next"]:
+        raise RuntimeError(f"deselected multi question did not return to next: {multi_cleared}")
+    multi_option.click()
+    page.locator(".q-card.active .option").nth(2).click()
+    page.locator("#submitBtn").click()
+    page.wait_for_timeout(100)
+    multi_submitted = bottom_state()
+    multi_submitted["answer"] = page.locator(".q-card.active .answer-static.show").count()
+    multi_review = page.evaluate(
+        """() => {
+            const card = document.querySelector('.q-card.active');
+            const result = card.querySelector('.q-result');
+            const hint = card.querySelector('.auto-hint.multi-count');
+            return {
+                correct: card.querySelectorAll('.option.correct').length,
+                missed: card.querySelectorAll('.option.missed').length,
+                wrong: card.querySelectorAll('.option.wrong').length,
+                your: result.querySelector('.result-your')?.textContent.trim() || '',
+                counts: result.querySelector('.result-counts')?.textContent.trim() || '',
+                hintDisplay: hint ? getComputedStyle(hint).display : 'missing',
+                distractor: card.querySelector('.as-distractor')?.textContent.trim() || '',
+                answerBorder: parseFloat(getComputedStyle(card.querySelector('.answer-static')).borderLeftWidth),
+                pitfallBorder: parseFloat(getComputedStyle(card.querySelector('.as-pit')).borderLeftWidth),
+                pitfallPadding: parseFloat(getComputedStyle(card.querySelector('.as-pit')).paddingLeft),
+                alignDelta: Math.abs(
+                    card.querySelector('.as-pit-main b').getBoundingClientRect().left -
+                    card.querySelector('.as-ans-label').getBoundingClientRect().left
+                )
+            };
+        }"""
+    )
+    if (multi_submitted["submit"] or not multi_submitted["next"]
+            or multi_submitted["nextText"] != "下一题"
+            or multi_submitted["answer"] != 1):
+        raise RuntimeError(f"submitted multi question did not switch to next: {multi_submitted}")
+    if (multi_review["correct"] != 1 or multi_review["missed"] != 2
+            or multi_review["wrong"] != 1
+            or "A、C" not in multi_review["your"]
+            or "漏选 2" not in multi_review["counts"]
+            or "错选 1" not in multi_review["counts"]
+            or multi_review["hintDisplay"] != "none"
+            or "主干扰项 C" not in multi_review["distractor"]
+            or multi_review["answerBorder"] != 0
+            or multi_review["pitfallBorder"] != 0
+            or multi_review["pitfallPadding"] != 8
+            or multi_review["alignDelta"] > 1):
+        raise RuntimeError(f"multi review states are wrong: {multi_review}")
+    page.close()
+
+    mobile = browser.new_page(viewport={"width": 390, "height": 844}, is_mobile=True)
+    mobile.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+    mobile.wait_for_timeout(120)
+    mobile.evaluate(
+        """() => {
+            setModeValue('all');
+            setTypeValue('all');
+            setChapterValue('all');
+            const q = ALL.find(item => item.type === 'fill');
+            state.idx = curList.findIndex(item => item.id === q.id);
+            renderCurrent();
+        }"""
+    )
+    mobile.wait_for_timeout(80)
+    mobile_empty = mobile.evaluate(
+        """() => ({
+            submit: getComputedStyle(document.getElementById('submitBtn')).display !== 'none',
+            next: getComputedStyle(document.getElementById('nextBtn')).display !== 'none',
+            nextText: document.getElementById('nextBtn').textContent.trim()
+        })"""
+    )
+    if mobile_empty != {"submit": False, "next": True, "nextText": "下一题"}:
+        raise RuntimeError(f"mobile empty fill button state is wrong: {mobile_empty}")
+    mobile.locator(".q-card.active input.fill-input").first.fill("草稿")
+    mobile.wait_for_timeout(50)
+    mobile_draft = mobile.evaluate(
+        """() => ({
+            submit: getComputedStyle(document.getElementById('submitBtn')).display !== 'none',
+            next: getComputedStyle(document.getElementById('nextBtn')).display !== 'none',
+            nextText: document.getElementById('submitBtn').textContent.trim(),
+            overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth
+        })"""
+    )
+    if (not mobile_draft["submit"] or mobile_draft["next"]
+            or mobile_draft["nextText"] != "提交答案" or mobile_draft["overflow"]):
+        raise RuntimeError(f"mobile fill draft button state is wrong: {mobile_draft}")
+    mobile.close()
+
+    exam = browser.new_page(viewport={"width": 1280, "height": 900})
+    exam.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+    exam.wait_for_timeout(120)
+    exam.evaluate(
+        """() => {
+            setModeValue('all');
+            setTypeValue('multi');
+            beginExam();
+        }"""
+    )
+    exam.wait_for_timeout(120)
+    exam.locator(".q-card.active .option").nth(0).click()
+    exam.locator(".q-card.active .option").nth(2).click()
+    exam.evaluate("() => submitExam()")
+    exam.wait_for_timeout(140)
+    exam.evaluate("() => closeReport()")
+    exam.wait_for_timeout(80)
+    exam_review = exam.evaluate(
+        """() => {
+            const card = document.querySelector('.q-card.active');
+            const result = card.querySelector('.q-result');
+            return {
+                finished: exam.finished,
+                correct: card.querySelectorAll('.option.correct').length,
+                missed: card.querySelectorAll('.option.missed').length,
+                wrong: card.querySelectorAll('.option.wrong').length,
+                your: result.querySelector('.result-your')?.textContent.trim() || '',
+                counts: result.querySelector('.result-counts')?.textContent.trim() || ''
+            };
+        }"""
+    )
+    if (not exam_review["finished"] or exam_review["correct"] != 1
+            or exam_review["missed"] != 2 or exam_review["wrong"] != 1
+            or "A、C" not in exam_review["your"]
+            or "漏选 2" not in exam_review["counts"]
+            or "错选 1" not in exam_review["counts"]):
+        raise RuntimeError(f"mock exam multi review states are wrong: {exam_review}")
+    exam.close()
+
+
+def check_subjective_feedback(browser) -> None:
+    """Subjective answers should get offline key-point coverage feedback."""
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    page.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+    page.wait_for_timeout(120)
+    page.evaluate(
+        """() => {
+            setModeValue('all');
+            setTypeValue('subj');
+            const q = curList.find(item => item.type === 'short');
+            state.idx = curList.findIndex(item => item.id === q.id);
+            renderCurrent();
+        }"""
+    )
+    page.wait_for_timeout(80)
+    page.locator(".q-card.active textarea.subj-input").fill("主键唯一标识本表记录")
+    page.locator("#submitBtn").click()
+    page.wait_for_timeout(120)
+    submitted = page.evaluate(
+        """() => {
+            const card = document.querySelector('.q-card.active');
+            const result = card.querySelector('.q-result');
+            const hint = card.querySelector('.subj-hint');
+            const review = card.querySelector('.subj-review');
+            return {
+                points: card.querySelectorAll('.subj-keypoint').length,
+                hit: card.querySelectorAll('.subj-keypoint.hit').length,
+                missed: card.querySelectorAll('.subj-keypoint.missed').length,
+                coverage: card.querySelector('.subj-coverage').textContent.trim(),
+                feedback: card.querySelector('.subj-feedback').textContent.trim(),
+                result: result.textContent.trim(),
+                disabled: card.querySelector('.subj-input').disabled,
+                hintDisplay: getComputedStyle(hint).display,
+                reviewDisplay: getComputedStyle(review).display,
+                answerVisible: !!card.querySelector('.answer-static.show')
+            };
+        }"""
+    )
+    if (submitted["points"] != 3 or submitted["hit"] != 1 or submitted["missed"] != 2
+            or "1 / 3" not in submitted["coverage"]
+            or "部分关键点" not in submitted["feedback"]
+            or "关键点覆盖 1 / 3" not in submitted["result"]
+            or not submitted["disabled"] or submitted["hintDisplay"] != "none"
+            or submitted["reviewDisplay"] == "none" or not submitted["answerVisible"]):
+        raise RuntimeError(f"subjective key-point feedback is wrong: {submitted}")
+
+    page.evaluate("() => redoCardFrom(document.querySelector('.q-card.active .redo-btn'))")
+    page.wait_for_timeout(80)
+    reset = page.evaluate(
+        """() => {
+            const card = document.querySelector('.q-card.active');
+            return {
+                disabled: card.querySelector('.subj-input').disabled,
+                hit: card.querySelectorAll('.subj-keypoint.hit').length,
+                missed: card.querySelectorAll('.subj-keypoint.missed').length,
+                coverage: card.querySelector('.subj-coverage').textContent.trim(),
+                hintDisplay: getComputedStyle(card.querySelector('.subj-hint')).display,
+                reviewDisplay: getComputedStyle(card.querySelector('.subj-review')).display
+            };
+        }"""
+    )
+    if (reset["disabled"] or reset["hit"] or reset["missed"] or reset["coverage"]
+            or reset["hintDisplay"] == "none" or reset["reviewDisplay"] != "none"):
+        raise RuntimeError(f"subjective key-point redo reset is wrong: {reset}")
+    page.close()
 
 
 def run() -> int:
@@ -1500,6 +2128,9 @@ def run() -> int:
                                 f"quiz odd exam quantities are wrong: {odd_quantities}"
                             )
                         wide_tablet.evaluate("() => closeReport()")
+                check_wrong_export(browser)
+                check_practice_multi_fill_buttons(browser)
+                check_subjective_feedback(browser)
             finally:
                 browser.close()
     except Exception as exc:

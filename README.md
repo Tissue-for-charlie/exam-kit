@@ -16,7 +16,7 @@
 |---|---|---|
 | **知识清单** | 按章背诵：杂志式章卡分组；知识点四色重要度；content 自动把比较/并列渲染成**对比表、流程、分类**（少超长句）；章末折叠自测 | [![知识清单预览](showcase/preview/outline-thumb.png)](showcase/preview/outline.png) |
 | **复习题** | 紧凑学习栏 + 逐题作答、自动批改；筛选收进浮层/底部面板；**按章分组答题地图**随筛选重编号并定位当前题；填空按空编号判分；**极速刷题**、**模拟考试**、**错题本 + 导出错题 HTML / 打印双卷 / 导出 Word**、题目搜索、标记与蒙对 | [![复习题预览](showcase/preview/quiz-thumb.png)](showcase/preview/quiz.png) |
-| **复习题 · 错题本导出** | 由复习题一键生成的独立离线 HTML：仅含错题、答案展开、可打印（受"隐藏AI题"开关影响，不含题号导航与重做按钮） | [![错题导出预览](showcase/preview/wrong-thumb.png)](showcase/preview/wrong.png) |
+| **复习题 · 错题本导出** | 由复习题一键生成的独立离线二刷 HTML：仅含错题，答案默认隐藏；支持重新作答判分、逐题/全览模式、章节筛选、随机顺序、一键显示答案解析、自动恢复进度、键盘与移动端滑动切题，以及含答案/空白两种打印（受"隐藏AI题"开关影响） | [![错题导出预览](showcase/preview/wrong-thumb.png)](showcase/preview/wrong.png) |
 | **知识图谱** | **放射总览**（课程→章节一圈），点某章向外展开它的知识点、点气泡看结构化详情；可全屏 | [![知识图谱预览](showcase/preview/graph-thumb.png)](showcase/preview/graph.png) |
 
 <sub>三份均单文件、离线可开可打印；桌面与移动端已分别适配，复习题覆盖 320–1440px 视口与键盘焦点管理。缩略图为桌面小图，点击可看全尺寸。</sub>
@@ -129,6 +129,7 @@ scripts/                    # 核心：资料处理链，四步串起来就是�
 ├── extract.py              #   提取文字，记录图片路径供多模态 Agent 阅读
 ├── render_outline.py       #   渲染知识清单 HTML
 ├── render_quiz.py          #   渲染复习题 HTML（交互答题 / 模拟考试 / 导出）
+├── wrong_export.py         #   错题本独立离线二刷页：样式、状态与运行时
 └── render_graph.py         #   渲染知识图谱 HTML
 showcase/                   # 辅助：公开 demo 与回归，用于证明渲染链可复现
 ├── fixture/course.json     #   独立措辞的演示数据（骨架 + 题库 schema 范本）
