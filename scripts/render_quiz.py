@@ -305,10 +305,10 @@ body.fast .main { padding-bottom: 46px; }
 .q-card.answered .subj-hint { display: none; }
 .subj-review {
   display: none;
-  margin-top: 12px;
+  margin-top: 14px;
   padding: 12px 14px;
-  border-left: 3px solid #cfd5de;
-  background: #f7f8fa;
+  background: #e8f1fb;
+  border-radius: 8px;
 }
 .q-card.answered .subj-review { display: block; animation: riseIn .22s var(--ease); }
 .subj-review-head {
@@ -320,7 +320,24 @@ body.fast .main { padding-bottom: 46px; }
   color: var(--ink);
   font-size: 13px;
 }
-.subj-coverage { color: var(--muted); font-size: 11.5px; font-weight: 500; }
+.subj-review-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.subj-coverage { color: var(--muted); font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+.subj-review-toggle {
+  width: 26px; height: 26px; flex: none; position: relative; display: inline-flex;
+  align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 7px;
+  background: transparent; color: var(--muted); cursor: pointer; touch-action: manipulation;
+  transition: background .14s var(--ease), color .14s var(--ease);
+}
+.subj-review-toggle::before { content: ""; position: absolute; inset: -7px; }
+.subj-review-toggle:hover, .subj-review-toggle:active { background: rgba(21,101,192,.1); color: var(--accent2); }
+.subj-review-toggle svg {
+  width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; transition: transform .16s var(--ease);
+}
+.subj-review.is-collapsed { padding: 5px 10px; }
+.subj-review.is-collapsed .subj-review-head { margin-bottom: 0; }
+.subj-review.is-collapsed .subj-review-toggle svg { transform: rotate(180deg); }
+.subj-review.is-collapsed .subj-review-body { display: none; }
 .subj-keypoints {
   display: grid;
   gap: 5px;
@@ -391,6 +408,44 @@ body:not(.fast) .quiz-list .q-card .q-actions .btn-primary { display: none; }
 .q-result .result-counts { margin-left: auto; color: var(--wrong); font-size: 12px; font-weight: 650; }
 .q-result .pts { font-weight: 400; margin-left: 6px; }
 .q-card.answered .auto-hint.multi-count { display: none; }
+.answer-controls { display: block; }
+.answer-toggle {
+  display: none; position: relative; align-items: center; gap: 6px; min-height: 32px; margin-left: auto;
+  padding: 5px 10px; border: 1px solid #cfe0f5; border-radius: 8px;
+  background: #eef4fd; color: var(--accent2); font-family: inherit;
+  font-size: 12.5px; font-weight: 600; line-height: 1.4; cursor: pointer;
+  touch-action: manipulation;
+}
+.answer-toggle::before { content: ""; position: absolute; inset: -4px; }
+.answer-toggle:hover, .answer-toggle:active { border-color: #b9d5f4; background: #e4effb; }
+.answer-toggle svg {
+  width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; transition: transform .16s var(--ease);
+}
+.q-card.answer-open .answer-toggle svg { transform: rotate(180deg); }
+body.fast .quiz-list .q-card .auto-hint:not(.multi-count) { display: none; }
+body.fast .quiz-list .q-card .auto-hint.multi-count:not(.has-selection) { display: none; }
+body.fast .quiz-list .q-card[data-type="choice"] .q-actions,
+body.fast .quiz-list .q-card[data-type="tf"] .q-actions,
+body.fast .quiz-list .q-card.answered .q-actions { display: none; }
+body.fast .quiz-list .q-card.answered .answer-controls {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 14px; flex-wrap: wrap;
+}
+body.fast .quiz-list .q-card.answered .q-result {
+  width: auto; max-width: 100%; min-height: 32px; margin: 0; padding: 6px 10px;
+  display: inline-flex; align-items: center; justify-content: flex-start;
+  gap: 6px; border-radius: 6px; font-size: 12.5px; flex-wrap: wrap;
+}
+body.fast .quiz-list .q-card.answered .q-result .result-counts {
+  width: auto; margin-left: 0; text-align: left;
+}
+body.fast .quiz-list .q-card.answered .answer-toggle { display: inline-flex; }
+body.fast .quiz-list .q-card.answered:not(.answer-open) .answer-static.show { display: none; }
+body:not(.fast) .quiz-list .q-card .subj-actions { display: none; }
+body:not(.fast) .quiz-list .q-card .subj-input { display: block; }
+body.fast .quiz-list .q-card.answered .subj-actions { display: none; }
+body.fast .quiz-list .q-card.answered .subj-input { display: block; }
 
 @media (max-width: 640px) {
   .q-result.ok, .q-result.bad { align-items: flex-start; }
@@ -804,6 +859,7 @@ body.exam-on .mode-btn.exam-entry { display: none; }
 .toggle-top-btn:focus-visible, .nav button:focus-visible, .mode-btn:focus-visible,
 .fill-input:focus-visible, .subj-input:focus-visible, .search-input:focus-visible, .exam-min:focus-visible,
 .star-btn:focus-visible, .guess-btn:focus-visible, .report-close:focus-visible,
+.subj-review-toggle:focus-visible, .answer-toggle:focus-visible,
 .qnav-toggle:focus-visible, .backtop:focus-visible,
 .mobile-filter-btn:focus-visible, .filter-close:focus-visible,
 .filter-sheet-foot button:focus-visible, .mobile-ai-switch:focus-visible,
@@ -1572,6 +1628,7 @@ select:focus-visible, .tool-btn:focus-visible, .study-summary:focus-visible,
 @media print {
   body { background: #fff; }
   .header, #topBars, .report-overlay, .nav-fixed, .q-actions, .q-result,
+  .answer-controls,
   .qnav, .qnav-toggle, .qnav-close, .qnav-overlay, .backtop, .inline-hint, .star-btn,
   .post-answer-actions, .export-toast,
   .menu-wrap, .exam-strip { display: none !important; }
@@ -1581,6 +1638,9 @@ select:focus-visible, .tool-btn:focus-visible, .study-summary:focus-visible,
   .answer-static { display: block !important; }
   .subj-hint { display: none !important; }
   .subj-review { display: block !important; }
+  .subj-review-toggle { display: none !important; }
+  .subj-review-body { display: block !important; }
+  .answer-toggle { display: none !important; }
   .as-code { white-space: pre-wrap; overflow: visible; break-inside: avoid; }
   .option.disabled, .option { pointer-events: none; }
 }
@@ -1814,7 +1874,7 @@ def _rich_text(text: str) -> str:
     return "".join(out) or _plain_html(source)
 
 
-def _answer_static(q):
+def _answer_static(q, answer_id=""):
     """正确答案 + 解析 + 易错点（打印与提交后展示共用）。"""
     parts = [f'<div class="as-ans"><div class="as-ans-label">正确答案：</div>'
              f'<div class="v as-rich">{_rich_text(_fmt_answer(q))}</div></div>']
@@ -1836,7 +1896,8 @@ def _answer_static(q):
                     f'<span>{_rich_text(distractor["contrast"])}</span></div></div>')
         pit += '</div>'
         parts.append(pit)
-    return f'<div class="answer-static">{"".join(parts)}</div>'
+    id_attr = f' id="{html.escape(answer_id, quote=True)}"' if answer_id else ""
+    return f'<div class="answer-static"{id_attr}>{"".join(parts)}</div>'
 
 
 SUBJECTIVE_HINTS = {
@@ -1939,6 +2000,8 @@ def _subjective_review_html(q: dict) -> str:
     points = _subjective_key_points(q)
     if not points:
         return ""
+    qid = html.escape(str(q.get("id", "")), quote=True)
+    body_id = f"subj-review-body-{qid}"
     items = []
     for point in points:
         keywords = json.dumps(point["keywords"], ensure_ascii=False)
@@ -1949,11 +2012,17 @@ def _subjective_review_html(q: dict) -> str:
             f'<span>{html.escape(point["label"])}</span></li>'
         )
     return (
-        '<section class="subj-review" aria-label="主观题关键点反馈">'
+        f'<section class="subj-review" data-qid="{qid}" aria-label="主观题关键点反馈">'
         '<div class="subj-review-head"><b>关键点对照</b>'
-        '<span class="subj-coverage"></span></div>'
+        '<div class="subj-review-actions"><span class="subj-coverage" aria-live="polite"></span>'
+        f'<button class="subj-review-toggle" type="button" onclick="toggleSubjReview(this)" '
+        f'aria-expanded="true" aria-controls="{body_id}" '
+        'aria-label="收起关键点对照" title="收起关键点对照">'
+        '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+        '<path d="M5 14l7-7 7 7"/></svg></button></div></div>'
+        f'<div class="subj-review-body" id="{body_id}">'
         f'<ul class="subj-keypoints">{"".join(items)}</ul>'
-        '<div class="subj-feedback" aria-live="polite"></div>'
+        '<div class="subj-feedback" aria-live="polite"></div></div>'
         '</section>'
     )
 
@@ -2074,7 +2143,7 @@ def _render_question(q, gid):
         lines.append(f'<div class="q-stem">{qtext}</div>')
         lines.append(_subjective_hint_html(q))
         lines.append('<textarea class="subj-input" aria-label="你的答案" placeholder="在此输入你的答案……"></textarea>')
-        lines.append('<div class="q-actions">'
+        lines.append('<div class="q-actions subj-actions">'
                      f'<button class="btn btn-primary" onclick="submitCardFrom(this)">提交答案</button>'
                      '</div>')
     elif t in ("choice", "tf"):
@@ -2096,13 +2165,26 @@ def _render_question(q, gid):
                      f'<button class="btn btn-primary" onclick="submitCardFrom(this)">提交答案</button>'
                      '</div>')
 
-    # 判分结果条
-    lines.append('<div class="q-result" role="status"></div>')
+    # 主观题关键点先展示，再放判分结果与答案控制行。
     if t in SUBJECTIVE:
         lines.append(_subjective_review_html(q))
 
+    answer_id = f"answer-static-{qid}"
+    answer_id_attr = html.escape(answer_id, quote=True)
+    lines.append(
+        '<div class="answer-controls">'
+        '<div class="q-result" role="status"></div>'
+        f'<button class="answer-toggle" type="button" onclick="toggleAnswerFrom(this)" '
+        f'aria-expanded="false" aria-controls="{answer_id_attr}" '
+        'aria-label="查看答案与解析" title="查看答案与解析">'
+        '<span class="answer-toggle-text">查看答案与解析</span>'
+        '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+        '<path d="M6 9l6 6 6-6"/></svg></button>'
+        '</div>'
+    )
+
     # 答案 + 解析（提交后展示 / 打印强制显示）
-    lines.append(_answer_static(q))
+    lines.append(_answer_static(q, answer_id))
     lines.append(
         '<div class="post-answer-actions">'
         '<button class="btn btn-ghost redo-btn" type="button" onclick="redoCardFrom(this)">重做本题</button>'
@@ -2546,7 +2628,7 @@ function renderFast(){
   aiPool().forEach(function(q){
     var hit = true;
     if(state.type==='obj'){ if(SUBJ[q.type]) hit = false; }
-    else if(state.type==='subj' && !SUBJ[q.type]) hit = false;
+    else if(state.type==='subj'){ if(!SUBJ[q.type]) hit = false; }
     else if(state.type!=='all' && q.type!==state.type) hit = false;
     if(state.chapter!=='all' && q.chapterId!==state.chapter) hit = false;
     if(!matchQ(q)) hit = false;
@@ -2877,6 +2959,26 @@ function subjectivePointHit(node, studentNorm){
   return hits >= Math.max(floor, Math.ceil(tokens.length * ratio));
 }
 
+function setSubjReviewCollapsed(card, collapsed){
+  var review = card && card.querySelector('.subj-review');
+  if(!review) return;
+  var toggle = review.querySelector('.subj-review-toggle');
+  review.classList.toggle('is-collapsed', !!collapsed);
+  if(toggle){
+    var label = collapsed ? '展开关键点对照' : '收起关键点对照';
+    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    toggle.setAttribute('aria-label', label);
+    toggle.setAttribute('title', label);
+  }
+}
+
+function toggleSubjReview(btn){
+  var review = btn && btn.closest ? btn.closest('.subj-review') : null;
+  if(!review) return;
+  var card = review.closest('.q-card');
+  if(card) setSubjReviewCollapsed(card, !review.classList.contains('is-collapsed'));
+}
+
 function renderSubjectiveFeedback(card, q){
   var nodes = Array.prototype.slice.call(card.querySelectorAll('.subj-keypoint'));
   if(!nodes.length) return;
@@ -2922,22 +3024,35 @@ function submitCard(card){
     card.classList.add('answered');
     var subjInput = card.querySelector('.subj-input');
     if(subjInput) subjInput.disabled = true;
+    setSubjReviewCollapsed(card, false);
     card.querySelector('.answer-static').classList.add('show');
     renderSubjectiveFeedback(card, q);
     var sres = card.querySelector('.q-result');
+    var review = card.querySelector('.subj-review');
     if(sres){
       sres.className = 'q-result info';
-      sres.setAttribute('tabindex','-1');
-      try { sres.focus({preventScroll:true}); } catch(err) {}
+      sres.hidden = !!review;
+      if(review){
+        sres.removeAttribute('tabindex');
+      } else {
+        sres.innerHTML = '<span>已记录，可对照下方参考答案</span>';
+        sres.setAttribute('tabindex','-1');
+        try { sres.focus({preventScroll:true}); } catch(err) {}
+      }
     }
     markAnsweredCard(card);
     updateStats();
     updateBottomBar();
     var result = card.querySelector('.q-result');
-    if(result){
+    var toggle = review && review.querySelector('.subj-review-toggle');
+    var scrollTarget = review ? (toggle || review) : result;
+    if(review && toggle){
+      try { toggle.focus({preventScroll:true}); } catch(err) {}
+    }
+    if(scrollTarget){
       var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       requestAnimationFrame(function(){
-        try { result.scrollIntoView({block:'nearest', behavior:reduce ? 'auto' : 'smooth'}); } catch(err) {}
+        try { scrollTarget.scrollIntoView({block:'nearest', behavior:reduce ? 'auto' : 'smooth'}); } catch(err) {}
       });
     }
     if(state.mode==='unanswered'){ rebuildList(); renderCurrent(); }
@@ -3215,12 +3330,47 @@ function updateMultiCount(card){
   var el = card && card.querySelector('.auto-hint.multi-count');
   if(!el) return;
   var n = card.querySelectorAll('.option.selected').length;
-  el.textContent = n ? ('已选 ' + n + ' 项') : '可多选，选完点提交';
+  var shortcut = el.querySelector('.desktop-shortcuts');
+  if(n){
+    el.firstChild.nodeValue = '已选 ' + n + ' 项';
+    el.classList.add('has-selection');
+    if(shortcut) shortcut.hidden = true;
+  } else {
+    el.firstChild.nodeValue = '可多选，选完点提交';
+    el.classList.remove('has-selection');
+    if(shortcut) shortcut.hidden = false;
+  }
 }
 // 答完：收起「提交答案」、亮出「重做本题」
+function setAnswerOpen(card, open){
+  if(!card) return;
+  card.classList.toggle('answer-open', !!open);
+  var toggle = card.querySelector('.answer-toggle');
+  if(!toggle) return;
+  var label = open ? '收起答案与解析' : '查看答案与解析';
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  toggle.setAttribute('aria-label', label);
+  toggle.setAttribute('title', label);
+  var text = toggle.querySelector('.answer-toggle-text');
+  if(text) text.textContent = label;
+}
+function toggleAnswerFrom(btn){
+  var card = btn && btn.closest ? btn.closest('.q-card') : null;
+  if(!card) return;
+  var open = !card.classList.contains('answer-open');
+  setAnswerOpen(card, open);
+  var answer = card.querySelector('.answer-static');
+  if(open && answer){
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(function(){
+      try { answer.scrollIntoView({block:'nearest', behavior:reduce ? 'auto' : 'smooth'}); } catch(err) {}
+    });
+  }
+}
 function markAnsweredCard(card){
   var sb = card.querySelector('.q-actions .btn-primary'); if(sb) sb.style.display = 'none';
   var rb = card.querySelector('.redo-btn'); if(rb) rb.style.display = '';
+  setAnswerOpen(card, false);
 }
 // 把一张卡恢复成「未作答」的样子（重做本题 / 开考前清空作答共用；不动全局记录）
 function resetCardState(card){
@@ -3242,8 +3392,10 @@ function resetCardState(card){
     point.classList.remove('hit','missed');
   });
   card.querySelectorAll('.subj-coverage,.subj-feedback').forEach(function(node){ node.textContent=''; });
+  setSubjReviewCollapsed(card, false);
+  setAnswerOpen(card, false);
   var as = card.querySelector('.answer-static'); if(as) as.classList.remove('show');
-  var res = card.querySelector('.q-result'); if(res){ res.className='q-result'; res.removeAttribute('tabindex'); res.innerHTML=''; }
+  var res = card.querySelector('.q-result'); if(res){ res.className='q-result'; res.hidden=false; res.removeAttribute('tabindex'); res.innerHTML=''; }
   var rb = card.querySelector('.redo-btn'); if(rb) rb.style.display='none';
   var sb = card.querySelector('.q-actions .btn-primary'); if(sb) sb.style.display='';
   updateMultiCount(card);

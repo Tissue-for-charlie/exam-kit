@@ -292,6 +292,93 @@ class QuizShellTests(unittest.TestCase):
         self.assertIn("subjectivePointHit(node, studentNorm)", self.js)
         self.assertIn(".q-card.answered .subj-hint { display: none; }", self.css)
 
+    def test_subjective_review_has_collapse_control(self) -> None:
+        self.assertIn('class="subj-review-toggle"', self.html)
+        self.assertIn('class="subj-review-body"', self.html)
+        self.assertIn('aria-expanded="true"', self.html)
+        self.assertIn('aria-controls="subj-review-body-', self.html)
+        self.assertIn('class="subj-coverage" aria-live="polite"', self.html)
+        self.assertIn("function toggleSubjReview(btn){", self.js)
+        self.assertIn("function setSubjReviewCollapsed(card, collapsed){", self.js)
+        self.assertIn("sres.hidden = !!review;", self.js)
+        self.assertIn("sres.innerHTML = '<span>已记录，可对照下方参考答案</span>';", self.js)
+        self.assertIn(".subj-review.is-collapsed .subj-review-body { display: none; }", self.css)
+        self.assertIn(".subj-review.is-collapsed { padding: 5px 10px; }", self.css)
+        self.assertIn(".subj-review.is-collapsed .subj-review-head { margin-bottom: 0; }", self.css)
+        self.assertIn(
+            ".subj-review-toggle {\n"
+            "  width: 26px; height: 26px;",
+            self.css,
+        )
+        self.assertIn(
+            ".subj-review {\n"
+            "  display: none;\n"
+            "  margin-top: 14px;\n"
+            "  padding: 12px 14px;\n"
+            "  background: #e8f1fb;\n"
+            "  border-radius: 8px;",
+            self.css,
+        )
+        self.assertNotIn("border-left: 3px solid #cfd5de;", self.css)
+        self.assertIn(".subj-review-toggle { display: none !important; }", self.css)
+        self.assertIn(".subj-review-body { display: block !important; }", self.css)
+
+    def test_hides_subjective_actions_outside_fast_mode(self) -> None:
+        self.assertIn('<div class="q-actions subj-actions">', self.html)
+        self.assertIn(
+            "body:not(.fast) .quiz-list .q-card .subj-actions { display: none; }",
+            self.css,
+        )
+        self.assertIn(
+            "body:not(.fast) .quiz-list .q-card .subj-input { display: block; }",
+            self.css,
+        )
+        self.assertIn(
+            "body.fast .quiz-list .q-card.answered .subj-actions { display: none; }",
+            self.css,
+        )
+        self.assertIn(
+            "body.fast .quiz-list .q-card.answered .subj-input { display: block; }",
+            self.css,
+        )
+        self.assertIn(
+            "else if(state.type==='subj'){ if(!SUBJ[q.type]) hit = false; }",
+            self.js,
+        )
+        self.assertNotIn(
+            "else if(state.type==='subj' && !SUBJ[q.type]) hit = false;",
+            self.js,
+        )
+        self.assertNotIn(
+            '<div class="q-actions subj-actions">\n<span class="auto-hint">',
+            self.html,
+        )
+
+    def test_fast_mode_has_collapsible_answers_and_compact_hints(self) -> None:
+        self.assertIn('<div class="answer-controls">', self.html)
+        self.assertIn('class="answer-toggle"', self.html)
+        self.assertIn('aria-controls="answer-static-', self.html)
+        self.assertIn("function setAnswerOpen(card, open){", self.js)
+        self.assertIn("function toggleAnswerFrom(btn){", self.js)
+        self.assertIn(
+            "body.fast .quiz-list .q-card.answered:not(.answer-open) .answer-static.show { display: none; }",
+            self.css,
+        )
+        self.assertIn(
+            "body.fast .quiz-list .q-card[data-type=\"choice\"] .q-actions,",
+            self.css,
+        )
+        self.assertIn(
+            "body.fast .quiz-list .q-card .auto-hint:not(.multi-count) { display: none; }",
+            self.css,
+        )
+        self.assertIn(
+            "body.fast .quiz-list .q-card .auto-hint.multi-count:not(.has-selection) { display: none; }",
+            self.css,
+        )
+        self.assertIn(".answer-toggle { display: none !important; }", self.css)
+        self.assertIn(".answer-controls,\n", self.css)
+
     def test_answer_panels_have_no_left_rule_and_align_pitfall_text(self) -> None:
         self.assertIn("background: var(--line-2); border-left: 0;", self.css)
         self.assertIn(

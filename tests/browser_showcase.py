@@ -667,13 +667,16 @@ def check_subjective_feedback(browser) -> None:
             const result = card.querySelector('.q-result');
             const hint = card.querySelector('.subj-hint');
             const review = card.querySelector('.subj-review');
+            const coverage = card.querySelector('.subj-coverage');
             return {
                 points: card.querySelectorAll('.subj-keypoint').length,
                 hit: card.querySelectorAll('.subj-keypoint.hit').length,
                 missed: card.querySelectorAll('.subj-keypoint.missed').length,
-                coverage: card.querySelector('.subj-coverage').textContent.trim(),
+                coverage: coverage.textContent.trim(),
+                coverageLive: coverage.getAttribute('aria-live'),
                 feedback: card.querySelector('.subj-feedback').textContent.trim(),
                 result: result.textContent.trim(),
+                resultHidden: result.hidden,
                 disabled: card.querySelector('.subj-input').disabled,
                 hintDisplay: getComputedStyle(hint).display,
                 reviewDisplay: getComputedStyle(review).display,
@@ -683,8 +686,10 @@ def check_subjective_feedback(browser) -> None:
     )
     if (submitted["points"] != 3 or submitted["hit"] != 1 or submitted["missed"] != 2
             or "1 / 3" not in submitted["coverage"]
+            or submitted["coverageLive"] != "polite"
             or "部分关键点" not in submitted["feedback"]
             or "关键点覆盖 1 / 3" not in submitted["result"]
+            or not submitted["resultHidden"]
             or not submitted["disabled"] or submitted["hintDisplay"] != "none"
             or submitted["reviewDisplay"] == "none" or not submitted["answerVisible"]):
         raise RuntimeError(f"subjective key-point feedback is wrong: {submitted}")
@@ -700,13 +705,511 @@ def check_subjective_feedback(browser) -> None:
                 missed: card.querySelectorAll('.subj-keypoint.missed').length,
                 coverage: card.querySelector('.subj-coverage').textContent.trim(),
                 hintDisplay: getComputedStyle(card.querySelector('.subj-hint')).display,
-                reviewDisplay: getComputedStyle(card.querySelector('.subj-review')).display
+                reviewDisplay: getComputedStyle(card.querySelector('.subj-review')).display,
+                resultHidden: card.querySelector('.q-result').hidden
             };
         }"""
     )
     if (reset["disabled"] or reset["hit"] or reset["missed"] or reset["coverage"]
-            or reset["hintDisplay"] == "none" or reset["reviewDisplay"] != "none"):
+            or reset["hintDisplay"] == "none" or reset["reviewDisplay"] != "none"
+            or reset["resultHidden"]):
         raise RuntimeError(f"subjective key-point redo reset is wrong: {reset}")
+    page.close()
+
+    fallback = browser.new_page(viewport={"width": 1280, "height": 900})
+    fallback.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+    fallback.wait_for_timeout(120)
+    fallback.evaluate(
+        """() => {
+            setModeValue('all');
+            setTypeValue('subj');
+            document.querySelector('.q-card.active .subj-review').remove();
+        }"""
+    )
+    fallback.locator(".q-card.active textarea.subj-input").fill("无采分点兜底")
+    fallback.locator("#submitBtn").click()
+    fallback.wait_for_timeout(120)
+    fallback_state = fallback.evaluate(
+        """() => {
+            const result = document.querySelector('.q-card.active .q-result');
+            return {
+                hidden: result.hidden,
+                display: getComputedStyle(result).display,
+                text: result.textContent.trim()
+            };
+        }"""
+    )
+    fallback.close()
+    if (fallback_state["hidden"] or fallback_state["display"] == "none"
+            or "已记录" not in fallback_state["text"]):
+        raise RuntimeError(f"subjective fallback result is wrong: {fallback_state}")
+
+
+def check_subjective_review_collapse(browser) -> None:
+    """Key-point reviews should collapse compactly on every layout."""
+    layouts = (
+        ("mobile", {"width": 390, "height": 844}, True),
+        ("tablet", {"width": 642, "height": 768}, False),
+        ("desktop", {"width": 2048, "height": 900}, False),
+    )
+    for name, viewport, is_mobile in layouts:
+        page = browser.new_page(viewport=viewport, is_mobile=is_mobile)
+        page.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+        page.wait_for_timeout(120)
+        page.evaluate(
+            """() => {
+                setModeValue('all');
+                setTypeValue('subj');
+            }"""
+        )
+        page.wait_for_timeout(80)
+        card = page.locator(".q-card.active")
+        qid = card.get_attribute("data-qid")
+        card.locator("textarea.subj-input").fill("关键点折叠验证")
+        page.locator("#submitBtn").click()
+        page.wait_for_timeout(120)
+        before = card.evaluate(
+            """card => {
+                const review = card.querySelector('.subj-review');
+                const body = review.querySelector('.subj-review-body');
+                const toggle = review.querySelector('.subj-review-toggle');
+                const answer = card.querySelector('.answer-static');
+                const coverage = review.querySelector('.subj-coverage');
+                const rect = toggle.getBoundingClientRect();
+                return {
+                    expanded: toggle.getAttribute('aria-expanded'),
+                    bodyDisplay: getComputedStyle(body).display,
+                    answerTop: answer.getBoundingClientRect().top,
+                    reviewHeight: review.getBoundingClientRect().height,
+                    background: getComputedStyle(review).backgroundColor,
+                    borderLeftWidth: getComputedStyle(review).borderLeftWidth,
+                    borderRadius: getComputedStyle(review).borderRadius,
+                    reviewTitle: review.querySelector('.subj-review-head b').textContent.trim(),
+                    coverage: coverage.textContent.trim(),
+                    toggleWidth: rect.width,
+                    toggleHeight: rect.height,
+                    resultHidden: card.querySelector('.q-result').hidden
+                };
+            }"""
+        )
+        if (before["expanded"] != "true" or before["bodyDisplay"] == "none"
+                or before["reviewTitle"] != "关键点对照"
+                or not before["resultHidden"]
+                or before["background"] != "rgb(232, 241, 251)"
+                or before["borderLeftWidth"] != "0px"
+                or before["borderRadius"] != "8px"
+                or abs(before["toggleWidth"] - 26) > 0.5
+                or abs(before["toggleHeight"] - 26) > 0.5):
+            raise RuntimeError(f"{name} subjective review default state is wrong: {before}")
+
+        card.locator(".subj-review-toggle").click()
+        page.wait_for_timeout(60)
+        collapsed = card.evaluate(
+            """card => {
+                const review = card.querySelector('.subj-review');
+                const body = review.querySelector('.subj-review-body');
+                const toggle = review.querySelector('.subj-review-toggle');
+                const coverage = review.querySelector('.subj-coverage');
+                return {
+                    collapsed: review.classList.contains('is-collapsed'),
+                    expanded: toggle.getAttribute('aria-expanded'),
+                    label: toggle.getAttribute('aria-label'),
+                    bodyDisplay: getComputedStyle(body).display,
+                    coverage: coverage.textContent.trim(),
+                    reviewTitle: review.querySelector('.subj-review-head b').textContent.trim(),
+                    reviewHeight: review.getBoundingClientRect().height,
+                    background: getComputedStyle(review).backgroundColor,
+                    borderLeftWidth: getComputedStyle(review).borderLeftWidth,
+                    borderRadius: getComputedStyle(review).borderRadius,
+                    answerTop: card.querySelector('.answer-static').getBoundingClientRect().top,
+                    resultHidden: card.querySelector('.q-result').hidden
+                };
+            }"""
+        )
+        if (not collapsed["collapsed"] or collapsed["expanded"] != "false"
+                or collapsed["label"] != "展开关键点对照"
+                or collapsed["bodyDisplay"] != "none"
+                or collapsed["reviewTitle"] != "关键点对照"
+                or collapsed["coverage"] != before["coverage"]
+                or collapsed["reviewHeight"] < 34
+                or collapsed["reviewHeight"] > 38
+                or collapsed["background"] != "rgb(232, 241, 251)"
+                or collapsed["borderLeftWidth"] != "0px"
+                or collapsed["borderRadius"] != "8px"
+                or not collapsed["resultHidden"]
+                or collapsed["answerTop"] >= before["answerTop"]):
+            raise RuntimeError(f"{name} subjective review did not collapse: {collapsed}")
+
+        page.evaluate(
+            """qid => {
+                const other = curList.find(q => q.id !== qid && SUBJ[q.type]);
+                state.idx = curList.findIndex(q => q.id === other.id);
+                renderCurrent();
+                state.idx = curList.findIndex(q => q.id === qid);
+                renderCurrent();
+            }""",
+            qid,
+        )
+        page.wait_for_timeout(60)
+        remembered = card.evaluate(
+            "card => card.querySelector('.subj-review').classList.contains('is-collapsed')"
+        )
+        if not remembered:
+            raise RuntimeError(f"{name} subjective review state did not survive question switch")
+
+        if name == "desktop":
+            page.emulate_media(media="print")
+            print_state = card.evaluate(
+                """card => ({
+                    toggleDisplay: getComputedStyle(card.querySelector('.subj-review-toggle')).display,
+                    bodyDisplay: getComputedStyle(card.querySelector('.subj-review-body')).display
+                })"""
+            )
+            page.emulate_media(media="screen")
+            if print_state != {"toggleDisplay": "none", "bodyDisplay": "block"}:
+                raise RuntimeError(f"collapsed subjective review print state is wrong: {print_state}")
+
+        card.locator(".redo-btn").click()
+        page.wait_for_timeout(60)
+        reset = card.evaluate(
+            """card => ({
+                collapsed: card.querySelector('.subj-review').classList.contains('is-collapsed'),
+                expanded: card.querySelector('.subj-review-toggle').getAttribute('aria-expanded'),
+                label: card.querySelector('.subj-review-toggle').getAttribute('aria-label'),
+                resultHidden: card.querySelector('.q-result').hidden
+            })"""
+        )
+        if reset != {
+            "collapsed": False,
+            "expanded": "true",
+            "label": "收起关键点对照",
+            "resultHidden": False,
+        }:
+            raise RuntimeError(f"{name} subjective review redo reset is wrong: {reset}")
+        page.close()
+
+    page = browser.new_page(viewport={"width": 2048, "height": 900})
+    page.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+    page.wait_for_timeout(120)
+    page.evaluate(
+        """() => {
+            setModeValue('fast');
+            setTypeValue('subj');
+        }"""
+    )
+    page.wait_for_timeout(100)
+    cards = page.locator('.q-card.fastShow[data-type="short"]:not(.answered)')
+    first = cards.nth(0)
+    second = cards.nth(1)
+    first_id = first.get_attribute("data-qid")
+    second_id = second.get_attribute("data-qid")
+    for qid in (first_id, second_id):
+        card = page.locator(f'.q-card[data-qid="{qid}"]')
+        card.locator("textarea.subj-input").fill("极速刷题关键点折叠")
+        card.locator(".subj-actions .btn-primary").click()
+        page.wait_for_timeout(80)
+    first_card = page.locator(f'.q-card[data-qid="{first_id}"]')
+    second_card = page.locator(f'.q-card[data-qid="{second_id}"]')
+    first_card.locator(".subj-review-toggle").click()
+    page.wait_for_timeout(60)
+    states = page.evaluate(
+        """([firstId, secondId]) => {
+            const first = document.querySelector('.q-card[data-qid="' + firstId + '"] .subj-review');
+            const second = document.querySelector('.q-card[data-qid="' + secondId + '"] .subj-review');
+            return {
+                first: first.classList.contains('is-collapsed'),
+                second: second.classList.contains('is-collapsed')
+            };
+        }""",
+        [first_id, second_id],
+    )
+    if not states["first"] or states["second"]:
+        raise RuntimeError(f"fast subjective review states are coupled: {states}")
+    page.close()
+
+
+def check_subjective_spacing_across_layouts(browser) -> None:
+    """Every non-fast layout should remove the hidden subjective action-row gap."""
+    layouts = (
+        ("mobile", {"width": 390, "height": 844}, True),
+        ("tablet", {"width": 642, "height": 768}, False),
+        ("desktop", {"width": 2048, "height": 900}, False),
+    )
+    for name, viewport, is_mobile in layouts:
+        page = browser.new_page(viewport=viewport, is_mobile=is_mobile)
+        page.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+        page.wait_for_timeout(120)
+        page.evaluate(
+            """() => {
+                setModeValue('all');
+                setTypeValue('subj');
+            }"""
+        )
+        page.wait_for_timeout(80)
+        page.locator(".q-card.active textarea.subj-input").fill("只保留结果条前的必要间距")
+        page.locator("#submitBtn").click()
+        page.wait_for_timeout(120)
+        submitted = page.evaluate(
+            """() => {
+                const card = document.querySelector('.q-card.active');
+                const input = card.querySelector('.subj-input');
+                const actions = card.querySelector('.subj-actions');
+                const review = card.querySelector('.subj-review');
+                return {
+                    actionsDisplay: getComputedStyle(actions).display,
+                    actionsHeight: actions.getBoundingClientRect().height,
+                    gap: review.getBoundingClientRect().top - input.getBoundingClientRect().bottom,
+                    resultHidden: card.querySelector('.q-result').hidden,
+                    reviewDisplay: getComputedStyle(review).display,
+                    overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth
+                };
+            }"""
+        )
+        page.close()
+        if (submitted["actionsDisplay"] != "none" or submitted["actionsHeight"] != 0
+                or abs(submitted["gap"] - 14) > 1
+                or not submitted["resultHidden"]
+                or submitted["reviewDisplay"] == "none"
+                or (name == "mobile" and submitted["overflow"])):
+            raise RuntimeError(f"{name} subjective spacing is wrong: {submitted}")
+
+    page = browser.new_page(viewport={"width": 2048, "height": 900})
+    page.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+    page.wait_for_timeout(120)
+    page.evaluate(
+        """() => {
+            setModeValue('fast');
+            setTypeValue('subj');
+        }"""
+    )
+    page.wait_for_timeout(80)
+    fast = page.evaluate(
+        """() => {
+            const cards = Array.from(document.querySelectorAll('.q-card.fastShow'));
+            const card = cards.find(item => ['short', 'calc', 'essay'].includes(item.dataset.type)
+                && !item.classList.contains('answered'));
+            if (!card) {
+                return {count: cards.length, allSubjective: false, cardFound: false};
+            }
+            const actions = card.querySelector('.subj-actions');
+            const submit = actions.querySelector('.btn-primary');
+            return {
+                count: cards.length,
+                allSubjective: cards.every(item => ['short', 'calc', 'essay'].includes(item.dataset.type)),
+                cardFound: true,
+                qid: card.dataset.qid,
+                actionsDisplay: getComputedStyle(actions).display,
+                actionsHeight: actions.getBoundingClientRect().height,
+                submitDisplay: getComputedStyle(submit).display
+            };
+        }"""
+    )
+    if (fast["count"] < 1 or not fast["allSubjective"] or not fast["cardFound"]
+            or fast["actionsDisplay"] == "none" or fast["actionsHeight"] <= 0
+            or fast["submitDisplay"] == "none"):
+        raise RuntimeError(f"fast subjective filter is wrong: {fast}")
+    fast_card = page.locator(f'.q-card[data-qid="{fast["qid"]}"]')
+    fast_card.locator("textarea.subj-input").fill("极速刷题提交后也要收紧间距")
+    fast_card.locator(".subj-actions .btn-primary").click()
+    page.wait_for_timeout(120)
+    fast_submitted = page.evaluate(
+        """qid => {
+            const card = document.querySelector('.q-card[data-qid="' + qid + '"]');
+            const input = card.querySelector('.subj-input');
+            const actions = card.querySelector('.subj-actions');
+            const review = card.querySelector('.subj-review');
+            return {
+                answered: card.classList.contains('answered'),
+                actionsDisplay: getComputedStyle(actions).display,
+                actionsHeight: actions.getBoundingClientRect().height,
+                gap: review.getBoundingClientRect().top - input.getBoundingClientRect().bottom,
+                resultHidden: card.querySelector('.q-result').hidden,
+                reviewDisplay: getComputedStyle(review).display
+            };
+        }""",
+        fast["qid"],
+    )
+    if (not fast_submitted["answered"]
+            or fast_submitted["actionsDisplay"] != "none"
+            or fast_submitted["actionsHeight"] != 0
+            or abs(fast_submitted["gap"] - 14) > 1
+            or not fast_submitted["resultHidden"]
+            or fast_submitted["reviewDisplay"] == "none"):
+        raise RuntimeError(f"fast submitted subjective spacing is wrong: {fast_submitted}")
+    page.close()
+
+
+def check_fast_answer_collapse(browser) -> None:
+    """Fast mode should collapse answers by default and trim hint text."""
+    layouts = (
+        ("mobile", {"width": 390, "height": 844}, True),
+        ("tablet", {"width": 642, "height": 768}, False),
+        ("desktop", {"width": 2048, "height": 900}, False),
+    )
+    for name, viewport, is_mobile in layouts:
+        page = browser.new_page(viewport=viewport, is_mobile=is_mobile)
+        page.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+        page.wait_for_timeout(120)
+        page.evaluate("() => { setModeValue('fast'); setTypeValue('all'); }")
+        page.wait_for_timeout(100)
+        cards = page.locator(".q-card.fastShow")
+        first = cards.first
+        first.locator(".option").first.click()
+        page.wait_for_timeout(120)
+        initial = first.evaluate(
+            """card => {
+                const answer = card.querySelector('.answer-static');
+                const toggle = card.querySelector('.answer-toggle');
+                const result = card.querySelector('.q-result');
+                const actions = card.querySelector('.q-actions');
+                const resultStyle = getComputedStyle(result);
+                const toggleStyle = getComputedStyle(toggle);
+                return {
+                    answered: card.classList.contains('answered'),
+                    answerDisplay: getComputedStyle(answer).display,
+                    toggleText: toggle.querySelector('.answer-toggle-text').textContent.trim(),
+                    expanded: toggle.getAttribute('aria-expanded'),
+                    toggleDisplay: toggleStyle.display,
+                    toggleBackground: toggleStyle.backgroundColor,
+                    toggleBorderWidth: toggleStyle.borderTopWidth,
+                    resultDisplay: resultStyle.display,
+                    resultWidth: result.getBoundingClientRect().width,
+                    cardWidth: card.getBoundingClientRect().width,
+                    actionsDisplay: getComputedStyle(actions).display
+                };
+            }"""
+        )
+        if (not initial["answered"] or initial["answerDisplay"] != "none"
+                or initial["toggleText"] != "查看答案与解析"
+                or initial["expanded"] != "false"
+                or initial["toggleDisplay"] == "none"
+                or initial["toggleBackground"] != "rgb(238, 244, 253)"
+                or initial["toggleBorderWidth"] != "1px"
+                or initial["resultDisplay"] == "none"
+                or initial["resultWidth"] >= initial["cardWidth"] * 0.7
+                or initial["actionsDisplay"] != "none"):
+            raise RuntimeError(f"{name} fast answer default state is wrong: {initial}")
+
+        first.locator(".answer-toggle").click()
+        page.wait_for_timeout(60)
+        opened = first.evaluate(
+            """card => ({
+                answerDisplay: getComputedStyle(card.querySelector('.answer-static')).display,
+                expanded: card.querySelector('.answer-toggle').getAttribute('aria-expanded'),
+                label: card.querySelector('.answer-toggle-text').textContent.trim(),
+                openClass: card.classList.contains('answer-open')
+            })"""
+        )
+        if opened != {
+            "answerDisplay": "block",
+            "expanded": "true",
+            "label": "收起答案与解析",
+            "openClass": True,
+        }:
+            raise RuntimeError(f"{name} fast answer did not open: {opened}")
+
+        first.locator(".answer-toggle").click()
+        page.wait_for_timeout(60)
+        if first.evaluate("card => getComputedStyle(card.querySelector('.answer-static')).display") != "none":
+            raise RuntimeError(f"{name} fast answer did not close again")
+
+        if name == "desktop":
+            page.emulate_media(media="print")
+            print_state = first.evaluate(
+                """card => ({
+                    answerDisplay: getComputedStyle(card.querySelector('.answer-static')).display,
+                    toggleDisplay: getComputedStyle(card.querySelector('.answer-toggle')).display
+                })"""
+            )
+            page.emulate_media(media="screen")
+            if print_state != {"answerDisplay": "block", "toggleDisplay": "none"}:
+                raise RuntimeError(f"fast answer print state is wrong: {print_state}")
+        page.close()
+
+    page = browser.new_page(viewport={"width": 390, "height": 844}, is_mobile=True)
+    page.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+    page.wait_for_timeout(120)
+    page.evaluate("() => { setModeValue('fast'); setTypeValue('all'); }")
+    page.wait_for_timeout(100)
+    first_id = page.locator(".q-card.fastShow").nth(0).get_attribute("data-qid")
+    second_id = page.locator(".q-card.fastShow").nth(1).get_attribute("data-qid")
+    for qid in (first_id, second_id):
+        card = page.locator(f'.q-card[data-qid="{qid}"]')
+        card.locator(".option").first.click()
+        page.wait_for_timeout(80)
+    first_card = page.locator(f'.q-card[data-qid="{first_id}"]')
+    second_card = page.locator(f'.q-card[data-qid="{second_id}"]')
+    first_card.locator(".answer-toggle").click()
+    page.wait_for_timeout(60)
+    independent = page.evaluate(
+        """([firstId, secondId]) => {
+            const first = document.querySelector('.q-card[data-qid="' + firstId + '"]');
+            const second = document.querySelector('.q-card[data-qid="' + secondId + '"]');
+            return {
+                first: first.classList.contains('answer-open'),
+                second: second.classList.contains('answer-open'),
+                secondAnswer: getComputedStyle(second.querySelector('.answer-static')).display
+            };
+        }""",
+        [first_id, second_id],
+    )
+    if not independent["first"] or independent["second"] or independent["secondAnswer"] != "none":
+        raise RuntimeError(f"fast answer states are coupled: {independent}")
+    page.evaluate(
+        "qid => redoCardFrom(document.querySelector('.q-card[data-qid=\"' + qid + '\"] .redo-btn'))",
+        first_id,
+    )
+    page.wait_for_timeout(60)
+    if first_card.evaluate("card => card.classList.contains('answer-open')"):
+        raise RuntimeError("fast answer did not reset after redo")
+    page.close()
+
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    page.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+    page.wait_for_timeout(120)
+    page.evaluate("() => { setModeValue('fast'); setTypeValue('multi'); }")
+    page.wait_for_timeout(80)
+    multi = page.locator(".q-card.fastShow[data-type='multi']").first
+    multi_state = multi.evaluate(
+        """card => ({
+            hintDisplay: getComputedStyle(card.querySelector('.auto-hint.multi-count')).display,
+            submitDisplay: getComputedStyle(card.querySelector('.q-actions .btn-primary')).display
+        })"""
+    )
+    if multi_state["hintDisplay"] != "none" or multi_state["submitDisplay"] == "none":
+        raise RuntimeError(f"fast multi empty state is wrong: {multi_state}")
+    multi.locator(".option").first.click()
+    page.wait_for_timeout(60)
+    multi_selected = multi.evaluate(
+        """card => {
+            const hint = card.querySelector('.auto-hint.multi-count');
+            const shortcut = hint.querySelector('.desktop-shortcuts');
+            return {
+                display: getComputedStyle(hint).display,
+                text: hint.innerText.trim(),
+                shortcutDisplay: shortcut ? getComputedStyle(shortcut).display : 'missing'
+            };
+        }"""
+    )
+    if (multi_selected["display"] == "none" or multi_selected["text"] != "已选 1 项"
+            or multi_selected["shortcutDisplay"] != "none"):
+        raise RuntimeError(f"fast multi count is wrong: {multi_selected}")
+    page.close()
+
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    page.goto((OUTPUT / "quiz.html").as_uri(), wait_until="load")
+    page.wait_for_timeout(120)
+    page.evaluate("() => { setModeValue('fast'); setTypeValue('fill'); }")
+    page.wait_for_timeout(80)
+    fill = page.locator(".q-card.fastShow[data-type='fill']").first
+    fill_state = fill.evaluate(
+        """card => ({
+            hintDisplay: getComputedStyle(card.querySelector('.auto-hint')).display,
+            submitDisplay: getComputedStyle(card.querySelector('.q-actions .btn-primary')).display
+        })"""
+    )
+    if fill_state["hintDisplay"] != "none" or fill_state["submitDisplay"] == "none":
+        raise RuntimeError(f"fast fill hint state is wrong: {fill_state}")
     page.close()
 
 
@@ -2131,6 +2634,9 @@ def run() -> int:
                 check_wrong_export(browser)
                 check_practice_multi_fill_buttons(browser)
                 check_subjective_feedback(browser)
+                check_subjective_review_collapse(browser)
+                check_subjective_spacing_across_layouts(browser)
+                check_fast_answer_collapse(browser)
             finally:
                 browser.close()
     except Exception as exc:
