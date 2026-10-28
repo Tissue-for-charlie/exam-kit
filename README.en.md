@@ -6,7 +6,7 @@
 [![python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](requirements.txt)
 [![check](https://github.com/Tissue-for-charlie/exam-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/Tissue-for-charlie/exam-kit/actions/workflows/verify.yml)
 
-See [CHANGELOG.md](CHANGELOG.md) for release notes: latest **V1.1.0** (2026.10.12), previous V1.0.0 (2026.9.16).
+See [CHANGELOG.md](CHANGELOG.md) for release notes: latest **V1.2.0** (2026.10.28), previous V1.1.0 (2026.10.12).
 
 > Turn scattered course slides into three offline review tools — printable, no CDN, no API.
 

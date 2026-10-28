@@ -6,7 +6,7 @@
 [![python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](requirements.txt)
 [![check](https://github.com/Tissue-for-charlie/exam-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/Tissue-for-charlie/exam-kit/actions/workflows/verify.yml)
 
-更新记录见 [CHANGELOG.md](CHANGELOG.md)：最新 **V1.1.0**（2026.10.12），上一版 V1.0.0（2026.9.16）。
+更新记录见 [CHANGELOG.md](CHANGELOG.md)：最新 **V1.2.0**（2026.10.28），上一版 V1.1.0（2026.10.12）。
 
 > 把散落的期末课件，变成能背、能刷、能看懂依赖关系的三份离线复习工具。
 
