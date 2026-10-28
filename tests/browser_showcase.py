@@ -1765,8 +1765,12 @@ def run() -> int:
                             "el => el.dispatchEvent(new WheelEvent('wheel', "
                             "{deltaY: -100, bubbles: true, cancelable: true}))"
                         )
-                        desktop.wait_for_timeout(50)
-                        after = viewport.get_attribute("style") or ""
+                        after = before
+                        for _ in range(40):
+                            desktop.wait_for_timeout(25)
+                            after = viewport.get_attribute("style") or ""
+                            if after != before:
+                                break
                         if before == after:
                             raise RuntimeError("graph zoom interaction did not change SVG transform")
 
